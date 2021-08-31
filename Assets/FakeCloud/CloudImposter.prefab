@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 661172406430944086}
   - component: {fileID: 661172406430944087}
   - component: {fileID: 661172406430944084}
-  - component: {fileID: 661172406430944080}
   m_Layer: 0
   m_Name: CloudImposter
   m_TagString: Untagged
@@ -27,7 +26,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 661172406430944085}
-  m_LocalRotation: {x: -0.70710707, y: -0, z: -0, w: 0.70710653}
+  m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
   m_LocalPosition: {x: -0.7, y: 3.09, z: 0}
   m_LocalScale: {x: 2.565, y: 1, z: 1}
   m_Children: []
@@ -92,22 +91,3 @@ BoxCollider:
   serializedVersion: 2
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &661172406430944080
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 661172406430944085}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41c386a5e8444704e8ec6fd88c8a71c3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  slicedTexture2D: {fileID: 2800000, guid: e8b99b2bb6f4f5141b869502b453a43e, type: 3}
-  generatedTexture3D: {fileID: 11700000, guid: eebeeb574887c0f4b817395ba77beada, type: 2}
-  col: 8
-  row: 8
-  width: 64
-  height: 64
-  depth: 64

@@ -122,7 +122,6 @@ GameObject:
   m_Component:
   - component: {fileID: 170076735}
   - component: {fileID: 170076734}
-  - component: {fileID: 170076736}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -182,25 +181,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
---- !u!114 &170076736
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 170076733}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 41c386a5e8444704e8ec6fd88c8a71c3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  slicedTexture2D: {fileID: 0}
-  generatedTexture3D: {fileID: 0}
-  col: 8
-  row: 8
-  width: 0
-  height: 0
-  depth: 0
 --- !u!1001 &393418168
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -273,6 +253,86 @@ PrefabInstance:
       propertyPath: m_Name
       value: CloudImposter (2)
       objectReference: {fileID: 0}
+    m_RemovedComponents:
+    - {fileID: 661172406430944080, guid: 72ee7c1b8535c5b46a3dc9aeb1806238, type: 3}
+  m_SourcePrefab: {fileID: 100100000, guid: 72ee7c1b8535c5b46a3dc9aeb1806238, type: 3}
+--- !u!1001 &530550104
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -1.7638
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.54
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -2.7
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.70710707
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.70710653
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 11
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -90.00001
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_LocalScale.x
+      value: 1.15938
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944085, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_Name
+      value: CloudImposter (6)
+      objectReference: {fileID: 0}
+    - target: {fileID: 661172406430944087, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 9ad42479bc6f1534dbae7d564602237c, type: 2}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 72ee7c1b8535c5b46a3dc9aeb1806238, type: 3}
 --- !u!1 &534669902
@@ -424,8 +484,78 @@ PrefabInstance:
       propertyPath: m_Name
       value: CloudImposter (4)
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 661172406430944080, guid: 72ee7c1b8535c5b46a3dc9aeb1806238, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 72ee7c1b8535c5b46a3dc9aeb1806238, type: 3}
+--- !u!1 &1045904210
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1045904212}
+  - component: {fileID: 1045904211}
+  - component: {fileID: 1045904213}
+  m_Layer: 0
+  m_Name: Generate3DTexture
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1045904211
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1045904210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 41c386a5e8444704e8ec6fd88c8a71c3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  slicedTexture2D: {fileID: 2800000, guid: e8b99b2bb6f4f5141b869502b453a43e, type: 3}
+  generatedTexture3D: {fileID: 11700000, guid: b4586a3120855bc4992a914a42ed8665, type: 2}
+  col: 8
+  row: 8
+  width: 64
+  height: 64
+  depth: 64
+--- !u!4 &1045904212
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1045904210}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1.449729, y: -0.4750495, z: -1.0024343}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 12
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1045904213
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1045904210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 191e08079db63e24daa3c8e2eb3a8f79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  size: {x: 32, y: 32, z: 32}
+  tex3D: {fileID: 11700000, guid: 2ebcb7296b7dcbc47ae83cfcfdf46147, type: 2}
+  scale: 2
+  persistence: 0.5
+  lacunarity: 2
+  octave: 4
 --- !u!1001 &1445668709
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -441,7 +571,7 @@ PrefabInstance:
     - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 2.73
+      value: 2.827
       objectReference: {fileID: 0}
     - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
         type: 3}
@@ -508,7 +638,8 @@ PrefabInstance:
       propertyPath: m_Name
       value: CloudImposter (5)
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 661172406430944080, guid: 72ee7c1b8535c5b46a3dc9aeb1806238, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 72ee7c1b8535c5b46a3dc9aeb1806238, type: 3}
 --- !u!1 &1550304283
 GameObject:
@@ -599,7 +730,7 @@ Transform:
   m_LocalScale: {x: 1, y: 3.6875343, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 4
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1595683047
 GameObject:
@@ -691,7 +822,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 3
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1611199893
 PrefabInstance:
@@ -765,7 +896,8 @@ PrefabInstance:
       propertyPath: m_Name
       value: CloudImposter (1)
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 661172406430944080, guid: 72ee7c1b8535c5b46a3dc9aeb1806238, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 72ee7c1b8535c5b46a3dc9aeb1806238, type: 3}
 --- !u!1 &1633923373
 GameObject:
@@ -856,7 +988,7 @@ Transform:
   m_LocalScale: {x: 0.23832, y: 0.23832, z: 0.23832}
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 5
+  m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1731508704
 PrefabInstance:
@@ -935,7 +1067,8 @@ PrefabInstance:
       propertyPath: m_Name
       value: CloudImposter (3)
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 661172406430944080, guid: 72ee7c1b8535c5b46a3dc9aeb1806238, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: 72ee7c1b8535c5b46a3dc9aeb1806238, type: 3}
 --- !u!1001 &661172406003095565
 PrefabInstance:
@@ -982,7 +1115,7 @@ PrefabInstance:
     - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
         type: 3}
       propertyPath: m_RootOrder
-      value: 2
+      value: 5
       objectReference: {fileID: 0}
     - target: {fileID: 661172406430944081, guid: 72ee7c1b8535c5b46a3dc9aeb1806238,
         type: 3}

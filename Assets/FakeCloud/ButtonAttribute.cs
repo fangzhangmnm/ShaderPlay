@@ -34,7 +34,6 @@ public static class EasyButtonsEditorExtensions
                     }
                     editor.Repaint();
                 }
-                GUILayout.Space(10);
             }
         }
     }
