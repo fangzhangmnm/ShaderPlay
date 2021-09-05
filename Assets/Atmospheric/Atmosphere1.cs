@@ -11,6 +11,9 @@ public class Atmosphere1 : MonoBehaviour
     public Transform sunlightDirection;
     public Color sunlight = Color.white;//Do not use Light.color because sunlight is not yellow before atmosphere absorbtion
     public float sunlightStrength = 1;
+    public Color ambientLight = Color.blue;//Do not use Light.color because sunlight is not yellow before atmosphere absorbtion
+    public float ambientLightStrength = 0;
+
     public Vector3 planetCenter;
     public float planetRadius=10;
     public bool alignGroundToPlanet = false;
@@ -38,6 +41,7 @@ public class Atmosphere1 : MonoBehaviour
         mat.SetVector("planetCenter", planetCenter/scale);
         mat.SetVector("dirToSun", -sunlightDirection.transform.forward);
         mat.SetVector("sunlight", sunlight* sunlightStrength);
+        mat.SetVector("ambientLight", ambientLight * ambientLightStrength);
         mat.SetFloat("planetRadius", planetRadius/ scale);
         mat.SetFloat("scale", scale);
         mat.SetFloat("atmosphereRadius", (planetRadius + atmosphereHeight)/ scale);

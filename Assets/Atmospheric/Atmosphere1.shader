@@ -45,6 +45,7 @@
             float3 planetCenter;
             float3 dirToSun;
             float3 sunlight;
+            float3 ambientLight;
             float planetRadius;
             float scale;
             float atmosphereRadius;
@@ -106,13 +107,15 @@
 
                 for(int i=0;i<numInScatteringPoints;++i){
                     float deltaDepth=getDensity(pos)*step;
-                    color*=exp(-deltaDepth*outScattering);
+
+                    color= lerp(ambientLight,color,exp(-deltaDepth*outScattering));
 
                     //if(raySphere(planetCenter,planetRadius,pos,dirToSun).y<planetRadius*.05){
                     float sunRayLength=raySphere(planetCenter,atmosphereRadius,pos,dirToSun).y;
                     float sunRayOpticalDepth=getOpticalDepth(pos, dirToSun, sunRayLength);
                     color+=exp(-(sunRayOpticalDepth+deltaDepth/2)*outScattering)*inScattering*deltaDepth;
                     //}
+
                     pos-=rayDir*step;
                 }
                 return color;
