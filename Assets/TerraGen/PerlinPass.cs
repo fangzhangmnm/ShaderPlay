@@ -38,6 +38,11 @@ namespace fzmnm.InfiniteGeneration.Pass
                 value *= heightScale;
                 results[index] = value;
             }
+            public void Dispose()
+            {
+                if (results.IsCreated) results.Dispose();
+                if (heightCurve.IsCreated) heightCurve.Dispose();
+            }
         }
 
 
@@ -47,12 +52,13 @@ namespace fzmnm.InfiniteGeneration.Pass
             target.RegisterMapOutput<float>(passID, outputHeightMapName, chunkSize);
             mapBuffer = new AreaMap<float>(Vector2Int.zero, Vector2Int.one * (chunkSize - 1));
         }
+        MyJob job;
         public override IEnumerator GenerateChunk(GenerationManager target, Vector2Int chunkID)
         {
             Debug.Log($"{GetType().Name}: {chunkID} Start");
             (Vector2Int min, Vector2Int max) = ChunkIDToMinMax(chunkID);
 
-            MyJob job = new MyJob()
+            job = new MyJob()
             {
                 results = new NativeArray<float>(chunkSize * chunkSize, Allocator.Persistent),
                 heightScale = heightScale,
@@ -78,7 +84,11 @@ namespace fzmnm.InfiniteGeneration.Pass
             target.WriteMap(outputHeightMapName, mapBuffer);
             Debug.Log($"{GetType().Name}: {chunkID} Done");
         }
-
+        private void OnEnable()
+        {
+            //Cleanup native allocated memories on script reloading
+            job.Dispose();
+        }
 
         [System.NonSerialized]
         AreaMap<float> mapBuffer;
