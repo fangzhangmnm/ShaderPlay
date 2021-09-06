@@ -1,4 +1,4 @@
-﻿Shader "Hidden/Atmosphere1"
+﻿Shader "Hidden/Atmosphere1_Inverted"
 {
     Properties
     {
@@ -43,6 +43,7 @@
             sampler2D _MainTex;
             sampler2D _CameraDepthTexture;
             float3 planetCenter;
+            float3 sunPos;
             float3 sunlightDir;
             float3 sunlight;
             float3 ambientLight;
@@ -81,7 +82,7 @@
             }
             
             float getDensity(float3 pos){
-                float height01= (length(pos-planetCenter)-planetRadius)/atmosphereHeight;
+                float height01= clamp((planetRadius- length(pos-planetCenter))/atmosphereHeight,0,1);
                 return exp(-height01*densityFalloff)*(1-height01);
             }
             float getOpticalDepth(float3 rayOrigin, float3 rayDir, float rayLength){
@@ -99,11 +100,8 @@
                 float step=rayLength/numInScatteringPoints;
                 float3 pos=rayOrigin+rayDir*(rayLength-step*.5);
 
-                float cosTh=dot(rayDir,sunlightDir);
                 float3 outScattering=rayleighScattering+mieScattering;
-                float3 inScattering=sunlight*rayleighScattering*rayleighPhaseFunction(cosTh);
-                if(mieScattering>0)
-                    inScattering+=mieScattering*miePhaseFunction(cosTh);
+                
 
                 for(int i=0;i<numInScatteringPoints;++i){
                     float deltaDepth=getDensity(pos)*step;
@@ -111,8 +109,15 @@
                     color= lerp(ambientLight,color,exp(-deltaDepth*outScattering));
 
                     //if(raySphere(planetCenter,planetRadius,pos,dirToSun).y<planetRadius*.05){
-                    float sunRayLength=raySphere(planetCenter,planetRadius+atmosphereHeight,pos,-sunlightDir).y;
-                    float sunRayOpticalDepth=getOpticalDepth(pos, -sunlightDir, sunRayLength);
+                    float3 dirToSun=normalize(sunPos-pos);
+                    float cosTh=-dot(rayDir,dirToSun);
+                    float sunStrength=clamp(-dot(dirToSun,sunlightDir),0,1);
+                    float3 inScattering=sunlight*rayleighScattering*rayleighPhaseFunction(cosTh)*sunStrength;
+                    if(mieScattering>0)
+                        inScattering+=mieScattering*miePhaseFunction(cosTh)*sunStrength;
+
+                    float sunRayLength=raySphere(planetCenter,planetRadius-atmosphereHeight,pos,dirToSun).x;
+                    float sunRayOpticalDepth=getOpticalDepth(pos, dirToSun, sunRayLength);
                     color+=exp(-(sunRayOpticalDepth+deltaDepth/2)*outScattering)*inScattering*deltaDepth;
                     //}
 
@@ -125,18 +130,18 @@
             {
                 fixed3 color=tex2D(_MainTex,input.uv);
                 float nonlinearDepth= SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, input.uv);
-                
-                float3 rayOrigin= _WorldSpaceCameraPos/scale;
-                float3 rayDir= normalize(input.viewVector);
-                float2 hitInfo=raySphere(planetCenter, planetRadius+atmosphereHeight ,rayOrigin,rayDir);
-                float dstToAtmosphere=hitInfo.x;
-                float dstThroughAtmosphere=hitInfo.y;
                 bool hasDepth;
-
                 if(UNITY_REVERSED_Z) 
                     hasDepth=nonlinearDepth>0;
                 else
                     hasDepth=nonlinearDepth<1;
+                
+                float3 rayOrigin= _WorldSpaceCameraPos/scale;
+                float3 rayDir= normalize(input.viewVector);
+
+                float2 hitInfo=raySphere(planetCenter, planetRadius ,rayOrigin,rayDir);
+                float dstToAtmosphere=hitInfo.x;
+                float dstThroughAtmosphere=hitInfo.y;
                 if(hasDepth){
                     float sceneDepth= LinearEyeDepth(nonlinearDepth)*length(input.viewVector)/scale;
                     dstThroughAtmosphere=min(dstThroughAtmosphere,sceneDepth-dstToAtmosphere);

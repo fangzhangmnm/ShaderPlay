@@ -8,10 +8,10 @@ public class Atmosphere1 : MonoBehaviour
     public Shader shader;
     public int numInScatteringPoints = 10;
     public int numOpticalDepthPoints = 10;
-    public Transform sunlightDirection;
+    public Transform sun;
     public Color sunlight = Color.white;//Do not use Light.color because sunlight is not yellow before atmosphere absorbtion
     public float sunlightStrength = 1;
-    public Color ambientLight = Color.blue;//Do not use Light.color because sunlight is not yellow before atmosphere absorbtion
+    public Color ambientLight = Color.white;//Do not use Light.color because sunlight is not yellow before atmosphere absorbtion
     public float ambientLightStrength = 0;
 
     public Vector3 planetCenter;
@@ -39,12 +39,13 @@ public class Atmosphere1 : MonoBehaviour
         float scale = planetRadius;
 
         mat.SetVector("planetCenter", planetCenter/scale);
-        mat.SetVector("dirToSun", -sunlightDirection.transform.forward);
+        mat.SetVector("sunlightDir", sun.transform.forward);
+        mat.SetVector("sunPos", sun.position/scale);
         mat.SetVector("sunlight", sunlight* sunlightStrength);
         mat.SetVector("ambientLight", ambientLight * ambientLightStrength);
         mat.SetFloat("planetRadius", planetRadius/ scale);
         mat.SetFloat("scale", scale);
-        mat.SetFloat("atmosphereRadius", (planetRadius + atmosphereHeight)/ scale);
+        mat.SetFloat("atmosphereHeight", atmosphereHeight/ scale);
         mat.SetFloat("densityFalloff", densityFalloff);
         mat.SetVector("rayleighScattering", wavelengthAdjust*rayleigh* scale);
         mat.SetFloat("mieScattering", mie* scale);

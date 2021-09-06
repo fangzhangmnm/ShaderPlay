@@ -20,11 +20,11 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0, g: 0, b: 0, a: 1}
+  m_AmbientSkyColor: {r: 0.17101279, g: 0.34504706, b: 0.5943396, a: 1}
   m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
   m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
   m_AmbientIntensity: 1
-  m_AmbientMode: 0
+  m_AmbientMode: 3
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
   m_SkyboxMaterial: {fileID: 2100000, guid: c4ad65a47abaedb4a950e2993c7377f8, type: 2}
   m_HaloStrength: 0.5
@@ -208,10 +208,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d54d9ac1f9c3dee4999fbe53c2b39726, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  shader: {fileID: 4800000, guid: a6f9e6389ac325b4f816b70da1de5d1a, type: 3}
+  shader: {fileID: 4800000, guid: 65c8a6e7b0310104aad63e289363370c, type: 3}
   numInScatteringPoints: 2
   numOpticalDepthPoints: 1
-  sunlightDirection: {fileID: 1518882477}
+  sun: {fileID: 1518882477}
   sunlight: {r: 1, g: 1, b: 1, a: 1}
   sunlightStrength: 1.5
   ambientLight: {r: 1, g: 0.7337015, b: 0.7216981, a: 1}
@@ -241,7 +241,7 @@ MonoBehaviour:
   shader: {fileID: 4800000, guid: a6f9e6389ac325b4f816b70da1de5d1a, type: 3}
   numInScatteringPoints: 5
   numOpticalDepthPoints: 1
-  sunlightDirection: {fileID: 1518882477}
+  sun: {fileID: 0}
   sunlight: {r: 1, g: 1, b: 1, a: 1}
   sunlightStrength: 1
   ambientLight: {r: 0, g: 0, b: 1, a: 1}
@@ -501,10 +501,10 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1518882475}
-  m_LocalRotation: {x: 0.48623997, y: -0, z: -0, w: 0.8738254}
+  m_LocalRotation: {x: 0.49156103, y: -0, z: -0, w: 0.8708432}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
-  m_LocalEulerAnglesHint: {x: 58.187004, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 58.886, y: 0, z: 0}
