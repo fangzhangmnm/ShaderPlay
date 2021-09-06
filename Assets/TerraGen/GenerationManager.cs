@@ -10,7 +10,6 @@ namespace fzmnm.InfiniteGeneration
         public float unitLength = 2;
         public GenerationPass[] generationPasses;
 
-        Dictionary<string, int> mapOutputPassID = new Dictionary<string, int>();
         Pass[] passes;
 
         public void Setup()
@@ -34,7 +33,7 @@ namespace fzmnm.InfiniteGeneration
         public void GenerateAll()
         {
             IEnumerator it = GenerateLoop();
-            while (it.MoveNext()) { }
+            while (it.MoveNext()) {  }
         }
         public IEnumerator GenerateLoop()
         {
@@ -45,11 +44,13 @@ namespace fzmnm.InfiniteGeneration
             {
                 foreach(Vector2Int chunkID in pass.requestedChunks)
                 {
+                    Debug.Log($"Generating {pass.generator.GetType().Name}:({chunkID})");
                     yield return StartCoroutine(pass.generator.GenerateChunk(this, chunkID));
                     pass.generatedChunks.Add(chunkID);
                 }
                 pass.requestedChunks.Clear();
             }
+            Debug.Log($"Generation Done");
         }
 
         void PropogatePassRequests()
@@ -62,7 +63,9 @@ namespace fzmnm.InfiniteGeneration
                     (Vector2Int min, Vector2Int max) = pass.generator.ChunkIDToMinMax(chunkID);
                     foreach ((string mapName, Vector2Int boundaryMin, Vector2Int boundaryMax) in pass.inputMaps)
                     {
-                        passes[mapOutputPassID[mapName]].RequestRange(min - boundaryMin, max + boundaryMax);
+                        for(int j=i-1;j>=0;--j)
+                            if(passes[j].outputMaps.Contains(mapName))
+                                passes[j].RequestRange(min - boundaryMin, max + boundaryMax);
                     }
                 }
             }
@@ -70,27 +73,68 @@ namespace fzmnm.InfiniteGeneration
 
 
         Dictionary<string, ChunkedMapBase> maps = new Dictionary<string, ChunkedMapBase>();
-        public void RegisterMapOutput<T>(int passID, string mapName,int chunkSize)
+
+        public void RegisterMapOutput<T>(int passID, string mapName,int chunkSize) where T:struct
         {
             if (!maps.ContainsKey(mapName))
                 maps[mapName] = new ChunkedMap<T>(chunkSize: chunkSize);
             passes[passID].outputMaps.Add(mapName);
-            mapOutputPassID[mapName] = passID;
         }
-        public void RegisterMapInput(int passID, string mapName, int boundary) => RegisterMapInput(passID, mapName, Vector2Int.one * boundary, Vector2Int.one * boundary);
+        public void RegisterEntityMapOutput<T>(int passID, string mapName, int chunkSize)
+        {
+            if (!maps.ContainsKey(mapName))
+                maps[mapName] = new ChunkedEntityMap<T>(chunkSize: chunkSize);
+            passes[passID].outputMaps.Add(mapName);
+        }
+
+        public void RegisterMapInput(int passID, string mapName, int boundary) 
+            => RegisterMapInput(passID, mapName, Vector2Int.one * boundary, Vector2Int.one * boundary);
         public void RegisterMapInput(int passID, string mapName, Vector2Int boundaryMin, Vector2Int boundaryMax)
         {
             passes[passID].inputMaps.Add((mapName, boundaryMin,boundaryMax));
         }
-        public void WriteMap<T>(string name, AreaMap<T> buffer)
+        public void WriteMap<T>(string mapName, AreaMap<T> buffer) where T : struct
         {
-            if (maps.TryGetValue(name, out ChunkedMapBase map))
-                ((ChunkedMap<T>)map).Write(buffer);
+            if (maps.TryGetValue(mapName, out ChunkedMapBase mapBase))
+                if(mapBase is ChunkedMap<T> map)
+                    map.Write(buffer);
         }
-        public void ReadMap<T>(string name, AreaMap<T> buffer)
+        public void ReadMap<T>(string mapName, AreaMap<T> buffer) where T : struct
         {
-            if (maps.TryGetValue(name, out ChunkedMapBase map))
-                ((ChunkedMap<T>)map).Read(buffer);
+            if (maps.TryGetValue(mapName, out ChunkedMapBase mapBase))
+                if (mapBase is ChunkedMap<T> map)
+                    map.Read(buffer);
+        }
+        public void AddEntity<T>(string mapName,Vector2Int coord, T payload)
+        {
+            if (maps.TryGetValue(mapName, out ChunkedMapBase mapBase))
+                if (mapBase is ChunkedEntityMap<T> map)
+                    map.Add(coord, payload);
+        }
+        public IEnumerable<ChunkedEntityMap<T>.Entity> Read<T>(string mapName, Vector2Int min, Vector2Int max)
+        {
+            if (maps.TryGetValue(mapName, out ChunkedMapBase mapBase))
+                if (mapBase is ChunkedEntityMap<T> map)
+                    return map.Read(min,max);
+            return null;
+        }
+
+        Dictionary<string, object> globalDict=new Dictionary<string, object>();
+
+        public void GlobalDictAdd(string key, object value)
+        {
+            globalDict[key] = value;
+        }
+        public T GlobalDictQuery<T>(string key)
+        {
+            if (globalDict.TryGetValue(key, out object value))
+                return (T)value;
+            else
+                return default;
+        }
+        public void GlobalDictRemove(string key)
+        {
+            globalDict.Remove(key);
         }
 
         private class Pass
@@ -100,7 +144,7 @@ namespace fzmnm.InfiniteGeneration
             public int chunkSize => generator.GetChunkSize();
             public HashSet<Vector2Int> generatedChunks = new HashSet<Vector2Int>();
             public HashSet<Vector2Int> requestedChunks = new HashSet<Vector2Int>();
-            public List<string> outputMaps=new List<string>();
+            public HashSet<string> outputMaps=new HashSet<string>();
             public List<(string, Vector2Int, Vector2Int)> inputMaps=new List<(string, Vector2Int, Vector2Int)>();
             public void RequestRange(Vector2Int min, Vector2Int max)
             {
