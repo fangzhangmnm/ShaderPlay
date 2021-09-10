@@ -30,12 +30,7 @@ namespace fzmnm.InfiniteGeneration
                 Debug.LogAssertion("There is no GenerationPass");
             passes[passes.Length - 1].RequestRange(min, max);
         }
-        public void GenerateAll()
-        {
-            IEnumerator it = GenerateLoop();
-            while (it.MoveNext()) {  }
-        }
-        public IEnumerator GenerateLoop()
+        public async void Generate()
         {
             if (passes == null)
                 Debug.LogAssertion("Please call Setup() before Generate()");
@@ -45,7 +40,7 @@ namespace fzmnm.InfiniteGeneration
                 foreach(Vector2Int chunkID in pass.requestedChunks)
                 {
                     Debug.Log($"Generating {pass.generator.GetType().Name}:({chunkID})");
-                    yield return StartCoroutine(pass.generator.GenerateChunk(this, chunkID));
+                    await pass.generator.GenerateChunk(this, chunkID);
                     pass.generatedChunks.Add(chunkID);
                 }
                 pass.requestedChunks.Clear();

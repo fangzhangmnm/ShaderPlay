@@ -4,6 +4,7 @@ using UnityEngine;
 using Unity.Jobs;
 using Unity.Collections;
 using System;
+using System.Threading.Tasks;
 
 //TODO align square and vertex
 
@@ -60,7 +61,7 @@ namespace fzmnm.InfiniteGeneration.Pass
             target.RegisterMapInput(passID, inputHeightMapName, 0);
             target.RegisterMapOutput<Color32>(passID, outputColorMapName, chunkSize);
         }
-        public override IEnumerator GenerateChunk(GenerationManager target, Vector2Int chunkID)
+        public override async Task GenerateChunk(GenerationManager target, Vector2Int chunkID)
         {
             (Vector2Int min, Vector2Int max) = ChunkIDToMinMax(chunkID);
 
@@ -69,10 +70,8 @@ namespace fzmnm.InfiniteGeneration.Pass
             target.ReadMap(inputHeightMapName, heightBuffer);
             job.heights.CopyFrom(heightBuffer.buffer);
 
-            JobHandle jobHandle = job.Schedule(chunkSize * chunkSize, 1);
-            yield return new WaitUntil(() => jobHandle.IsCompleted);
+            await job.Schedule(chunkSize * chunkSize, 1); //will also Complete() the jobHandle
 
-            jobHandle.Complete();//this is needed
             colorBuffer.Reset(min, max);
             job.colors.CopyTo(colorBuffer.buffer);
             job.Dispose();

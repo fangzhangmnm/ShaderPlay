@@ -3,14 +3,13 @@ namespace fzmnm
 {
     public static partial class Noise
     {
-        public static float Octave3D(float x, float y, float z, int octave, float persistence = .5f, float lacunarity = 2, int seed = 0)
+        public static float Octave3D(float x, float y, float z, int octave, float persistence = .5f, float lacunarity = 2, byte seed = 0)
         {
-            seed &= 0xff;
             float value = 0;
             float amplitude = 1;
             for (int i = 0; i < octave; ++i)
             {
-                value += (Perlin3D(x + (p[(seed + i) & 0xff]), y, z) - .5f) * 2 * amplitude;
+                value += (Perlin3D(x, y, z,seed:(byte)(seed+i)) - .5f) * 2 * amplitude;
                 amplitude *= persistence;
                 x *= lacunarity;
                 y *= lacunarity;
@@ -18,14 +17,14 @@ namespace fzmnm
             }
             return value;
         }
-        public static float Octave2D(float x, float y,  int octave, float persistence = .5f, float lacunarity=2, int seed=0)
+        public static float Octave2D(float x, float y,  int octave, float persistence = .5f, float lacunarity=2, byte seed=0)
         {
             seed &= 0xff;
             float value = 0;
             float amplitude = 1;
             for(int i=0;i<octave;++i)
             {
-                value += (Perlin2D(x+(p[(seed+i)&0xff]), y) -.5f)*2 * amplitude;
+                value += (Perlin2D(x, y, seed: (byte)(seed + i)) -.5f)*2 * amplitude;
                 amplitude *= persistence;
                 x *= lacunarity;
                 y *= lacunarity;
@@ -33,62 +32,59 @@ namespace fzmnm
             return value;
         }
         //credits https://adrianb.io/2014/08/09/perlinnoise.html
-        public static float Perlin2D(float x, float y, int repeatX = 256, int repeatY = 256)
+        public static float Perlin2D(float x, float y, int repeatX = 256, int repeatY = 256, byte seed=0)
         {
-            int xi = Mathf.FloorToInt(x); x -= xi; xi = PositiveMod(xi, repeatX); int xii = (xi + 1) % repeatX;
-            int yi = Mathf.FloorToInt(y); y -= yi; yi = PositiveMod(yi, repeatY); int yii = (yi + 1) % repeatY;
-            float xf = Fade(x), yf = Fade(y);
+            int xi = Mathf.FloorToInt(x); float xf = x - xi; xi = PositiveMod(xi, repeatX); int xii = (xi + 1) % repeatX;
+            int yi = Mathf.FloorToInt(y); float yf = y - yi; yi = PositiveMod(yi, repeatY); int yii = (yi + 1) % repeatY;
+            float xd = PerlinFade(xf), yd = PerlinFade(yf);
             float value=
                 Mathf.Lerp(
                     Mathf.Lerp(
-                        Grad(p[p[xi] + yi], x, y),
-                        Grad(p[p[xii] + yi], x - 1, y),
-                    xf),
+                        PerlinGrad2D(p[p[p[xi] + yi]+seed], xf, yf),
+                        PerlinGrad2D(p[p[p[xii] + yi] + seed], xf - 1, yf),
+                    xd),
                     Mathf.Lerp(
-                        Grad(p[p[xi] + yii], x, y - 1),
-                        Grad(p[p[xii] + yii], x - 1, y - 1),
-                    xf),
-                yf);
+                        PerlinGrad2D(p[p[p[xi] + yii] + seed], xf, yf - 1),
+                        PerlinGrad2D(p[p[p[xii] + yii] + seed], xf - 1, yf - 1),
+                    xd),
+                yd);
             return (value + 1) / 2;
         }
-        public static float Perlin3D(float x, float y, float z, int repeatX = 256, int repeatY = 256, int repeatZ = 256)
+        public static float Perlin3D(float x, float y, float z, int repeatX = 256, int repeatY = 256, int repeatZ = 256, byte seed = 0)
         {
-            repeatX = Mathf.Clamp(repeatX, 1, 256);
-            repeatY = Mathf.Clamp(repeatY, 1, 256);
-            repeatZ = Mathf.Clamp(repeatZ, 1, 256);
-            int xi = Mathf.FloorToInt(x); x -= xi; xi = PositiveMod(xi, repeatX); int xii = (xi + 1) % repeatX;
-            int yi = Mathf.FloorToInt(y); y -= yi; yi = PositiveMod(yi, repeatY); int yii = (yi + 1) % repeatY;
-            int zi = Mathf.FloorToInt(z); z -= zi; zi = PositiveMod(zi, repeatZ); int zii = (zi + 1) % repeatZ;
-            float xf = Fade(x), yf = Fade(y), zf = Fade(z);
+            int xi = Mathf.FloorToInt(x); float xf =x- xi; xi = PositiveMod(xi, repeatX); int xii = (xi + 1) % repeatX;
+            int yi = Mathf.FloorToInt(y); float yf=y- yi; yi = PositiveMod(yi, repeatY); int yii = (yi + 1) % repeatY;
+            int zi = Mathf.FloorToInt(z); float zf=z-zi; zi = PositiveMod(zi, repeatZ); int zii = (zi + 1) % repeatZ;
+            float xd = PerlinFade(xf), yd = PerlinFade(yf), zd = PerlinFade(zf);
             float value =
                 Mathf.Lerp(
                     Mathf.Lerp(
                         Mathf.Lerp(
-                            Grad(p[p[p[xi] + yi] + zi], x, y, z),
-                            Grad(p[p[p[xii] + yi] + zi], x - 1, y, z),
-                        xf),
+                            PerlinGrad3D(p[p[p[p[xi] + yi] + zi] + seed], xf, yf, zf),
+                            PerlinGrad3D(p[p[p[p[xii] + yi] + zi] + seed], xf - 1, yf, zf),
+                        xd),
                         Mathf.Lerp(
-                            Grad(p[p[p[xi] + yii] + zi], x, y - 1, z),
-                            Grad(p[p[p[xii] + yii] + zi], x - 1, y - 1, z),
-                        xf),
-                    yf),
+                            PerlinGrad3D(p[p[p[p[xi] + yii] + zi] + seed], xf, yf - 1, zf),
+                            PerlinGrad3D(p[p[p[p[xii] + yii] + zi] + seed], xf - 1, yf - 1, zf),
+                        xd),
+                    yd),
                     Mathf.Lerp(
                         Mathf.Lerp(
-                            Grad(p[p[p[xi] + yi] + zii], x, y, z - 1),
-                            Grad(p[p[p[xii] + yi] + zii], x - 1, y, z - 1),
-                        xf),
+                            PerlinGrad3D(p[p[p[p[xi] + yi] + zii] + seed], xf, yf, zf - 1),
+                            PerlinGrad3D(p[p[p[p[xii] + yi] + zii] + seed], xf - 1, yf, zf - 1),
+                        xd),
                         Mathf.Lerp(
-                            Grad(p[p[p[xi] + yii] + zii], x, y - 1, z - 1),
-                            Grad(p[p[p[xii] + yii] + zii], x - 1, y - 1, z - 1),
-                        xf),
-                    yf),
-                zf);
+                            PerlinGrad3D(p[p[p[p[xi] + yii] + zii] + seed], xf, yf - 1, zf - 1),
+                            PerlinGrad3D(p[p[p[p[xii] + yii] + zii] + seed], xf - 1, yf - 1, zf - 1),
+                        xd),
+                    yd),
+                zd);
             return (value + 1) / 2;
         }
-        private static float Fade(float t) => t * t * t * (t * (t * 6 - 15) + 10);
-        private static int PositiveMod(int x, int m) => x > 0 ? x % m : x % m + m;
+        private static float PerlinFade(float t) => t * t * t * (t * (t * 6 - 15) + 10);
+        private static int PositiveMod(int x, int m) => x >= 0 ? x % m : (x % m + m);
 
-        private static float Grad(int h, float x, float y,float z)
+        private static float PerlinGrad3D(int h, float x, float y,float z)
         {
             switch (h & 0xF)
             {
@@ -111,7 +107,7 @@ namespace fzmnm
                 default: return 0;
             }
         }
-        private static float Grad(int h, float x, float y)
+        private static float PerlinGrad2D(int h, float x, float y)
         {
             switch (h & 0x3)
             {

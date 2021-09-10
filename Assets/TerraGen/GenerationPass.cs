@@ -9,7 +9,7 @@ namespace fzmnm.InfiniteGeneration
     {
         public abstract int GetChunkSize();
         public abstract void Setup(GenerationManager target, int passID);
-        public abstract IEnumerator GenerateChunk(GenerationManager target, Vector2Int chunkID);
+        public abstract Task GenerateChunk(GenerationManager target, Vector2Int chunkID);
         public (Vector2Int, Vector2Int) ChunkIDToMinMax(Vector2Int chunkID) => (chunkID * GetChunkSize(), chunkID * GetChunkSize() + Vector2Int.one * (GetChunkSize() - 1));
 
     }

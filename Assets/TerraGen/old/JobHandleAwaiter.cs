@@ -7,6 +7,7 @@ using System;
 namespace fzmnm
 {
     //credits https://gist.github.com/distantcam/64cf44d84441e5c45e197f7d90c6df3e
+    //usage await job.Schedule(length, batchSize); //will also Complete() the jobHandle
     public class JobHandleAwaiter : INotifyCompletion
     {
         readonly JobHandle jobHandle;

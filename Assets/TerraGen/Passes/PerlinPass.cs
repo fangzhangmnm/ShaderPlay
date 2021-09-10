@@ -4,6 +4,7 @@ using UnityEngine;
 using Unity.Jobs;
 using Unity.Collections;
 using System;
+using System.Threading.Tasks;
 
 namespace fzmnm.InfiniteGeneration.Pass
 {
@@ -61,21 +62,20 @@ namespace fzmnm.InfiniteGeneration.Pass
         {
             target.RegisterMapOutput<float>(passID, outputHeightMapName, chunkSize);
         }
-        public override IEnumerator GenerateChunk(GenerationManager target, Vector2Int chunkID)
+        public override async Task GenerateChunk(GenerationManager target, Vector2Int chunkID)
         {
             (Vector2Int min, Vector2Int max) = ChunkIDToMinMax(chunkID);
 
             MyJob job = new MyJob(this, target, min);
 
-            JobHandle jobHandle = job.Schedule(chunkSize * chunkSize, 1);
-            yield return new WaitUntil(() => jobHandle.IsCompleted);
+            await job.Schedule(chunkSize * chunkSize, 1); //will also Complete() the jobHandle
 
-            jobHandle.Complete();//this is needed
             mapBuffer.Reset(min, max);
             job.results.CopyTo(mapBuffer.buffer);
             job.Dispose();
 
             target.WriteMap(outputHeightMapName, mapBuffer);
+            Debug.Log($"Perlin Done {chunkID}");
         }
 
         [System.NonSerialized]

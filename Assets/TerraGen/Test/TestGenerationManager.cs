@@ -15,7 +15,8 @@ namespace fzmnm.Test
             var mgr = GetComponent<GenerationManager>();
             mgr.Setup();
             mgr.RequestRange(min,max);
-            mgr.GenerateAll();
+            
+            mgr.Generate();
         }
         [Button]
         public void GenerateMesh()
