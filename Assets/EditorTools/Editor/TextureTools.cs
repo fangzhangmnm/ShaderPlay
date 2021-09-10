@@ -21,7 +21,6 @@ namespace fzmnm.EditorTools
         float hue, saturate, vibrance, contrast;
         Color lift, gamma, gain;
         Color detailBias=Color.gray;
-        string oldPath = "";
         void LoadDefaultColorCorrection()
         {
             hue = 0;
@@ -217,21 +216,23 @@ namespace fzmnm.EditorTools
             outputTexture.SetPixels(output);
             outputTexture.Apply();
         }
+        string oldPathPNG;
         void SavePNG()
         {
             if (outputTexture)
             {
-                string filename = oldPath=EditorUtility.SaveFilePanelInProject("Save PNG", "Texture", "png", "Save PNG", oldPath);
+                string filename = oldPathPNG = EditorUtility.SaveFilePanelInProject("Save PNG", "Texture", "png", "Save PNG", oldPathPNG);
                 if (filename.Length == 0) return;
                 System.IO.File.WriteAllBytes(filename, outputTexture.EncodeToPNG());
                 AssetDatabase.ImportAsset(filename);
             }
         }
+        string oldPathJPG;
         void SaveJPG()
         {
             if (outputTexture)
             {
-                string filename = oldPath=EditorUtility.SaveFilePanelInProject("Save JPG", "Texture", "jpg", "Save JPG", oldPath);
+                string filename = oldPathJPG=EditorUtility.SaveFilePanelInProject("Save JPG", "Texture", "jpg", "Save JPG", oldPathJPG);
                 if (filename.Length == 0) return;
                 System.IO.File.WriteAllBytes(filename, outputTexture.EncodeToJPG());
                 AssetDatabase.ImportAsset(filename);
