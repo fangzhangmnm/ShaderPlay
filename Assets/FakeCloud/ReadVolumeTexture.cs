@@ -17,7 +17,7 @@ namespace fzmnm
             width = slicedTexture2D.width / col;
             height = slicedTexture2D.height / row;
             depth = col * row;
-            if (!generatedTexture3D) generatedTexture3D = new Texture3D(width, height, depth, TextureFormat.Alpha8, false);
+            if (!generatedTexture3D) generatedTexture3D = new Texture3D(width, height, depth, TextureFormat.Alpha8, true);
             Color[] colors1 = slicedTexture2D.GetPixels(0);
             Color[] colors2 = new Color[width * height * depth];
             for (int i = 0; i < col; ++i)
@@ -35,7 +35,15 @@ namespace fzmnm
             generatedTexture3D.Apply();
             generatedTexture3D.wrapMode = TextureWrapMode.Clamp;
             if (!AssetDatabase.Contains(generatedTexture3D))
-                AssetDatabase.CreateAsset(generatedTexture3D, EditorUtility.SaveFilePanelInProject("Save Texture3D", "VolumeTexture", "asset", "Save Texture3D"));
+            {
+                string path = EditorUtility.SaveFilePanelInProject("Save Texture3D", "VolumeTexture", "asset", "Save Texture3D");
+                if (path != "")
+                {
+                    AssetDatabase.DeleteAsset(path);
+                    AssetDatabase.CreateAsset(generatedTexture3D, path);
+                }
+            }
+                
             else
                 AssetDatabase.SaveAssets();
         }
