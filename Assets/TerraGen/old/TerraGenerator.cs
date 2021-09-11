@@ -55,10 +55,10 @@ namespace fzmnm
                 {
                     Vector2 pos = new Vector2((coords.x + (float)x / resolution) * size, (coords.y + (float)y / resolution) * size);
                     Vector2 posDistortion = Vector2.zero;
-                    posDistortion.x = Noise.Octave2D(pos.x / scale+245, pos.y / scale, 4) * distortion*scale;
-                    posDistortion.y = Noise.Octave2D(pos.x / scale+527, pos.y / scale, 4) * distortion * scale;
+                    posDistortion.x = Noise.PerlinOctave2D(pos.x / scale+245, pos.y / scale, 4) * distortion*scale;
+                    posDistortion.y = Noise.PerlinOctave2D(pos.x / scale+527, pos.y / scale, 4) * distortion * scale;
                     pos += posDistortion;
-                    float value= Noise.Octave2D(pos.x / scale, pos.y / scale, 7);
+                    float value= Noise.PerlinOctave2D(pos.x / scale, pos.y / scale, 7);
                     value = curve.Evaluate(value);
                     value = value * heightScale;
                     chunk.heightField[x, y] = value;

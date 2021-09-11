@@ -18,7 +18,7 @@ namespace fzmnm.Test
             for (int y = 0; y < size.y; ++y)
                 for (int x = 0; x < size.x; ++x)
                 {
-                    float value = Noise.Octave2D(x / scale / size.x, y / scale / size.y, octave: octave, persistence: persistence, lacunarity: lacunarity);
+                    float value = Noise.PerlinOctave2D(x / scale / size.x, y / scale / size.y, octave: octave, persistence: persistence, lacunarity: lacunarity);
                     value = value / 2 + .5f;
                     Color color = new Color(value, value, value, value);
                     colors[x + y * size.x] = color;

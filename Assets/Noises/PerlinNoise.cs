@@ -3,39 +3,45 @@ namespace fzmnm
 {
     public static partial class Noise
     {
-        public static float Octave3D(float x, float y, float z, int octave, float persistence = .5f, float lacunarity = 2, byte seed = 0)
+        public static float PerlinOctave3D(float x, float y, float z, int octave, float persistence = .5f, float lacunarity = 2, int repeatX = 256, int repeatY = 256, int repeatZ = 256, byte seed = 0)
         {
             float value = 0;
             float amplitude = 1;
             for (int i = 0; i < octave; ++i)
             {
-                value += (Perlin3D(x, y, z,seed:(byte)(seed+i)) - .5f) * 2 * amplitude;
+                value += (Perlin3D(x, y, z, repeatX, repeatY, repeatZ, (byte)(seed + i)) - .5f) * 2 * amplitude;
                 amplitude *= persistence;
                 x *= lacunarity;
                 y *= lacunarity;
                 z *= lacunarity;
+                repeatX = Mathf.RoundToInt(repeatX * lacunarity);
+                repeatY = Mathf.RoundToInt(repeatY * lacunarity);
+                repeatZ = Mathf.RoundToInt(repeatZ * lacunarity);
             }
             return value;
         }
-        public static float Octave2D(float x, float y,  int octave, float persistence = .5f, float lacunarity=2, byte seed=0)
+        public static float PerlinOctave2D(float x, float y,  int octave, float persistence = .5f, float lacunarity=2, int repeatX = 256, int repeatY = 256, byte seed=0)
         {
             seed &= 0xff;
             float value = 0;
             float amplitude = 1;
             for(int i=0;i<octave;++i)
             {
-                value += (Perlin2D(x, y, seed: (byte)(seed + i)) -.5f)*2 * amplitude;
+                value += (Perlin2D(x, y, repeatX: repeatX, repeatY: repeatY, (byte)(seed + i)) - .5f) * 2 * amplitude;
                 amplitude *= persistence;
                 x *= lacunarity;
                 y *= lacunarity;
+                repeatX = Mathf.RoundToInt(repeatX * lacunarity);
+                repeatY = Mathf.RoundToInt(repeatY * lacunarity);
             }
             return value;
         }
+
         //credits https://adrianb.io/2014/08/09/perlinnoise.html
         public static float Perlin2D(float x, float y, int repeatX = 256, int repeatY = 256, byte seed=0)
         {
-            int xi = Mathf.FloorToInt(x); float xf = x - xi; xi = PositiveMod(xi, repeatX); int xii = (xi + 1) % repeatX;
-            int yi = Mathf.FloorToInt(y); float yf = y - yi; yi = PositiveMod(yi, repeatY); int yii = (yi + 1) % repeatY;
+            int xi = Mathf.FloorToInt(x); float xf = x - xi; xi = PositiveMod(xi, repeatX) & 0xff; int xii = PositiveMod(xi + 1,repeatX) & 0xff;
+            int yi = Mathf.FloorToInt(y); float yf = y - yi; yi = PositiveMod(yi, repeatY) & 0xff; int yii = PositiveMod(yi + 1, repeatY) & 0xff;
             float xd = PerlinFade(xf), yd = PerlinFade(yf);
             float value=
                 Mathf.Lerp(
@@ -52,9 +58,9 @@ namespace fzmnm
         }
         public static float Perlin3D(float x, float y, float z, int repeatX = 256, int repeatY = 256, int repeatZ = 256, byte seed = 0)
         {
-            int xi = Mathf.FloorToInt(x); float xf =x- xi; xi = PositiveMod(xi, repeatX); int xii = (xi + 1) % repeatX;
-            int yi = Mathf.FloorToInt(y); float yf=y- yi; yi = PositiveMod(yi, repeatY); int yii = (yi + 1) % repeatY;
-            int zi = Mathf.FloorToInt(z); float zf=z-zi; zi = PositiveMod(zi, repeatZ); int zii = (zi + 1) % repeatZ;
+            int xi = Mathf.FloorToInt(x); float xf =x- xi; xi = PositiveMod(xi, repeatX) & 0xff; int xii =PositiveMod(xi + 1, repeatX) & 0xff;
+            int yi = Mathf.FloorToInt(y); float yf=y- yi; yi = PositiveMod(yi, repeatY) & 0xff; int yii = PositiveMod(yi + 1, repeatY) & 0xff;
+            int zi = Mathf.FloorToInt(z); float zf=z-zi; zi = PositiveMod(zi, repeatZ) & 0xff; int zii = PositiveMod(zi + 1, repeatZ) & 0xff;
             float xd = PerlinFade(xf), yd = PerlinFade(yf), zd = PerlinFade(zf);
             float value =
                 Mathf.Lerp(
@@ -81,6 +87,7 @@ namespace fzmnm
                 zd);
             return (value + 1) / 2;
         }
+
         private static float PerlinFade(float t) => t * t * t * (t * (t * 6 - 15) + 10);
         private static int PositiveMod(int x, int m) => x >= 0 ? x % m : (x % m + m);
 

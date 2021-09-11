@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Jobs;
 using Unity.Collections;
-using System;
 using System.Threading.Tasks;
+using System;
 
 //TODO align square and vertex
 

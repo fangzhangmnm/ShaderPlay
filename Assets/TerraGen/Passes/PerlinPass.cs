@@ -43,10 +43,10 @@ namespace fzmnm.InfiniteGeneration.Pass
             {
                 Vector2 pos = new Vector2(index % chunkSize + x0, index / chunkSize + y0)*unitLength;
                 Vector2 posDistortion = new Vector2Int();
-                posDistortion.x = Noise.Octave2D(pos.x / landScale + 245, pos.y / landScale + seed, 4) * landScale * distortion;
-                posDistortion.y = Noise.Octave2D(pos.x / landScale + 527, pos.y / landScale + seed, 4) * landScale * distortion;
+                posDistortion.x = Noise.PerlinOctave2D(pos.x / landScale + 245, pos.y / landScale + seed, 4) * landScale * distortion;
+                posDistortion.y = Noise.PerlinOctave2D(pos.x / landScale + 527, pos.y / landScale + seed, 4) * landScale * distortion;
                 pos += posDistortion;
-                float value = Noise.Octave2D(pos.x / landScale, pos.y / landScale + seed, 7);
+                float value = Noise.PerlinOctave2D(pos.x / landScale, pos.y / landScale + seed, 7);
                 value = heightCurve.Evaluate(value);
                 value *= heightScale;
                 results[index] = value;
