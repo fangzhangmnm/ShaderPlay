@@ -78,8 +78,8 @@ namespace fzmnm.EditorTools
 
             if (GUILayout.Button("GeneratePerlin2D")) GeneratePerlin2D();
             if (GUILayout.Button("GeneratePerlin3D")) GeneratePerlin3D();
-            if (GUILayout.Button("GenerateVoronoi2D")) GenerateVoronoi2D();
-            if (GUILayout.Button("GenerateVoronoi3D")) GenerateVoronoi3D();
+            if (GUILayout.Button("GenerateWorley2D")) GenerateVoronoi2D();
+            if (GUILayout.Button("GenerateWorley3D")) GenerateVoronoi3D();
 
             EditorGUILayout.EndScrollView();
         }
@@ -146,7 +146,7 @@ namespace fzmnm.EditorTools
             for (int y = 0; y < resolution.y; ++y)
                 for (int x = 0; x < resolution.x; ++x)
                 {
-                    float value = Noise.VoronoiOctave2D(x * scale.x / resolution.x, y * scale.y / resolution.y,
+                    float value = Noise.WorleyOctave2D(x * scale.x / resolution.x, y * scale.y / resolution.y,
                         octave: octave, persistence: persistence, lacunarity: lacunarity,
                         repeatX: repeatX, repeatY: repeatY, seed: seed);
                     value = value / 2 + .5f;
@@ -162,7 +162,7 @@ namespace fzmnm.EditorTools
                 for (int y = 0; y < resolution.y; ++y)
                     for (int x = 0; x < resolution.x; ++x)
                     {
-                        float value = Noise.VoronoiOctave3D(x * scale.x / resolution.x, y * scale.y / resolution.y, z * scale.z / resolution.z,
+                        float value = Noise.WorleyOctave3D(x * scale.x / resolution.x, y * scale.y / resolution.y, z * scale.z / resolution.z,
                             octave: octave, persistence: persistence, lacunarity: lacunarity,
                             repeatX: repeatX, repeatY: repeatY, repeatZ: repeatZ, seed: seed);
                         value = value / 2 + .5f;

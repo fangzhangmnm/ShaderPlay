@@ -123,6 +123,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: SmoothSphere (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 100000, guid: d20c5e0fa7ff2324ca9532a49bda01cd, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: d20c5e0fa7ff2324ca9532a49bda01cd, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -525,6 +529,10 @@ PrefabInstance:
     - target: {fileID: 100000, guid: d20c5e0fa7ff2324ca9532a49bda01cd, type: 3}
       propertyPath: m_Name
       value: SmoothSphere
+      objectReference: {fileID: 0}
+    - target: {fileID: 100000, guid: d20c5e0fa7ff2324ca9532a49bda01cd, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 400000, guid: d20c5e0fa7ff2324ca9532a49bda01cd, type: 3}
       propertyPath: m_LocalPosition.x

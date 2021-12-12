@@ -29,7 +29,7 @@ public class Atmosphere1 : MonoBehaviour
     Material mat;
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        if (!mat || mat.shader != shader) { mat = new Material(shader); }
+        if (!mat || mat.shader != shader && shader) { mat = new Material(shader); }
 
         Vector3 wavelengthAdjust = new Vector3(Mathf.Pow(440f / wavelengths.x, 4), Mathf.Pow(440f / wavelengths.y, 4), Mathf.Pow(440f / wavelengths.z, 4));
 

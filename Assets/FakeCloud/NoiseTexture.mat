@@ -24,7 +24,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _CloudShape:
-        m_Texture: {fileID: 11700000, guid: 2ebcb7296b7dcbc47ae83cfcfdf46147, type: 2}
+        m_Texture: {fileID: 11700000, guid: 064f1e5bbfd059740b4910685ef969c8, type: 2}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _DetailAlbedoMap:

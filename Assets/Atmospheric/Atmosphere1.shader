@@ -132,11 +132,7 @@
                 float dstToAtmosphere=hitInfo.x;
                 float dstThroughAtmosphere=hitInfo.y;
                 bool hasDepth;
-
-                if(UNITY_REVERSED_Z) 
-                    hasDepth=nonlinearDepth>0;
-                else
-                    hasDepth=nonlinearDepth<1;
+                if(UNITY_REVERSED_Z) hasDepth=nonlinearDepth>0;else hasDepth=nonlinearDepth<1;
                 if(hasDepth){
                     float sceneDepth= LinearEyeDepth(nonlinearDepth)*length(input.viewVector)/scale;
                     dstThroughAtmosphere=min(dstThroughAtmosphere,sceneDepth-dstToAtmosphere);

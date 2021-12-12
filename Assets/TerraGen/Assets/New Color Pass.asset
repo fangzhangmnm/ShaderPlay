@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 837dddfe402a1b6498c1cedc22979bd5, type: 3}
+  m_Name: New Color Pass
+  m_EditorClassIdentifier: 
+  chunkSize: 64
+  inputHeightMapName: height
+  outputColorMapName: color
+  layers:
+  - maxHeight: -10
+    color:
+      serializedVersion: 2
+      rgba: 4290340165
+  - maxHeight: -1
+    color:
+      serializedVersion: 2
+      rgba: 4293372237
+  - maxHeight: 1
+    color:
+      serializedVersion: 2
+      rgba: 4289125619
+  - maxHeight: 8
+    color:
+      serializedVersion: 2
+      rgba: 4286560159
+  - maxHeight: 32
+    color:
+      serializedVersion: 2
+      rgba: 4281165117
+  - maxHeight: 96
+    color:
+      serializedVersion: 2
+      rgba: 4289243304
+  - maxHeight: 255
+    color:
+      serializedVersion: 2
+      rgba: 4294967295
