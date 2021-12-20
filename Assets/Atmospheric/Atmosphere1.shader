@@ -40,36 +40,47 @@
                 return output;
             }
 
-            sampler2D _MainTex;
-            sampler2D _CameraDepthTexture;
-            float3 planetCenter;
-            float3 sunlightDir;
-            float3 sunlight;
-            float3 ambientLight;
-            float planetRadius;
-            float scale;
-            float atmosphereHeight;
-            float densityFalloff;
-            float3 rayleighScattering;
-            float mieScattering;
-            float mieG;
+            //Planet Geometry
+            float4x4 worldToPlanetTRS;
+            float depthToPlanetS;
+            float zeroHeightRadius;
+            float atmosphereRadius;
+
+            //Sun Light
+            float3 dirToLight;
+            float3 lightColor;
+
+            //Atmosphere
+            float atmosphereInvDensityFalloffHeight;
+            float3 atmosphereAbsorption;
+            float3 atmosphereEmission;
+            float3 atmosphereRayleighInscattering;
+            float3 atmosphereMieInscattering;
+            float3 atmosphereMieCoeff;
+
+            //LightMarch Parameters
             int numInScatteringPoints;
             int numOpticalDepthPoints;
 
-            float miePhaseFunction(float cosTh){
-                float g2=mieG*mieG;
-                return 1.5*(1-g2)/(2+g2)*(1+cosTh*cosTh)/pow(1+g2-2*mieG*cosTh,1.5);
-            }
-            float rayleighPhaseFunction(float cosTh){
+            //PostProcessing
+            float toneMappingExposure;
+            float4x4 spectralColor2RGB;
+            float4x4 RGB2spectralColor;
+
+            sampler2D _MainTex,_CameraDepthTexture;
+
+            float miePhase(float cosTh, float3 mieCoeff){
+                return clamp(mieCoeff.x*pow(mieCoeff.y-mieCoeff.z*cosTh,-1.5),0,100);
+            }           
+            float rayleighPhase(float cosTh){
                 return .75*(1+cosTh*cosTh);
             }
-
-            float2 raySphere(float3 sphereCenter, float sphereRadius, float3 rayOrigin, float3 rayDir){
+            
+            float2 raySphere(float sphereRadius, float3 rayOrigin, float3 rayDir){
                 //returns dstToSphere,dstThroughSphere
                 //dir is normalzied
-                float3 offset=rayOrigin-sphereCenter;
-                float b=2*dot(offset,rayDir);
-                float c=dot(offset,offset)-sphereRadius*sphereRadius;
+                float b=2*dot(rayOrigin,rayDir);
+                float c=dot(rayOrigin,rayOrigin)-sphereRadius*sphereRadius;
                 float d=b*b-4*c;
                 if(d>0){
                     float s=sqrt(d);
@@ -77,13 +88,15 @@
                     float dstToSphereFar=(-b+s)/2;
                     if(dstToSphereFar>=0)return float2(dstToSphereNear, dstToSphereFar-dstToSphereNear);
                 }
-                return float2(3.402823466e+38F,0);
+                return float2(0,0);
             }
+
             
             float getDensity(float3 pos){
-                float height01= (length(pos-planetCenter)-planetRadius)/atmosphereHeight;
-                return exp(-height01*densityFalloff)*(1-height01);
+                float height= max(length(pos)-zeroHeightRadius,0);
+                return exp(-height*atmosphereInvDensityFalloffHeight);
             }
+
             float getOpticalDepth(float3 rayOrigin, float3 rayDir, float rayLength){
                 float step=rayLength/numOpticalDepthPoints;
                 float3 pos=rayOrigin+rayDir*(step*.5);
@@ -95,6 +108,70 @@
                 return opticalDepth;
             }
 
+            float3 raymarch( float3 color, float3 rayOrigin, float3 rayDir, float rayLength){
+                float dst=0;
+                float3 light=0;
+                float3 transmittance=float3(1,1,1);
+                
+                float cosTh=dot(rayDir,dirToLight);
+                float3 atmosphereInscatteringLight=lightColor*
+                                                 (atmosphereRayleighInscattering*rayleighPhase(cosTh)
+                                                 +atmosphereMieInscattering*miePhase(cosTh,atmosphereMieCoeff));
+                float step=rayLength/numInScatteringPoints;
+                dst=step/2;
+                for(int i=0;i<numInScatteringPoints;++i){
+                    float3 pos=rayOrigin+rayDir*dst;
+                    float atmosphereStepDensity=getDensity(pos)*step;
+
+                    transmittance*=exp(-atmosphereStepDensity*atmosphereAbsorption);
+
+                    float2 hitInfo=raySphere(atmosphereRadius,pos,dirToLight);
+                    float inscatteringAtmosphereDepth=getOpticalDepth(pos, dirToLight, hitInfo.y);
+                    //Todo Sphere Shadow
+                    light+=(atmosphereEmission+atmosphereInscatteringLight*exp(-inscatteringAtmosphereDepth*atmosphereAbsorption))*atmosphereStepDensity*transmittance;
+                    dst+=step;
+                }
+
+                return color*transmittance+light;
+            }
+
+            
+            fixed3 frag (v2f input) : SV_Target
+            {
+                //Get the screen depth and camera ray
+                float nonlinearDepth= SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, input.uv);
+
+                bool hasDepth; if(UNITY_REVERSED_Z) hasDepth=nonlinearDepth>0;else hasDepth=nonlinearDepth<1;
+                float depth; if(hasDepth)depth=LinearEyeDepth(nonlinearDepth)*length(input.viewVector)*depthToPlanetS; else depth=1e38;
+                float3 rayOrigin=mul(worldToPlanetTRS,float4(_WorldSpaceCameraPos,1));
+                float3 rayDir=normalize(mul(worldToPlanetTRS,input.viewVector));
+
+                //Intersect the ray to the atmosphere
+                float2 hitInfo=raySphere( atmosphereRadius ,rayOrigin,rayDir);
+                float dstToAtmosphere=hitInfo.x;
+                float dstThroughAtmosphere=min(hitInfo.y,depth-hitInfo.x);
+
+                float3 col=tex2D(_MainTex,input.uv);
+
+                
+                //The spectral color space is not the rgb color space
+                col=mul(RGB2spectralColor,col);
+                if(dstThroughAtmosphere>0)
+                    col=raymarch(col, rayOrigin+rayDir*dstToAtmosphere,rayDir,dstThroughAtmosphere);
+                col=mul(spectralColor2RGB,col);
+                
+                //HDR mapping, which is very important for realitistic picture
+                //Do the HDR mapping in the spectral color space
+                if(toneMappingExposure>0)
+                    col.xyz=1-exp(-toneMappingExposure*col.xyz);
+
+                return col;
+            }
+            ENDCG
+        }
+    }
+}
+            /*
             float3 raymarch( float3 color, float3 rayOrigin, float3 rayDir, float rayLength){
                 float step=rayLength/numInScatteringPoints;
                 float3 pos=rayOrigin+rayDir*(rayLength-step*.5);
@@ -110,8 +187,8 @@
 
                     color= lerp(ambientLight,color,exp(-deltaDepth*outScattering));
 
-                    //if(raySphere(planetCenter,planetRadius,pos,dirToSun).y<planetRadius*.05){
-                    float sunRayLength=raySphere(planetCenter,planetRadius+atmosphereHeight,pos,-sunlightDir).y;
+                    //if(raySphere(planetRadius,pos-planetCenter,dirToSun).y<planetRadius*.05){
+                    float sunRayLength=raySphere(planetRadius+atmosphereHeight,pos-planetCenter,-sunlightDir).y;
                     float sunRayOpticalDepth=getOpticalDepth(pos, -sunlightDir, sunRayLength);
                     color+=exp(-(sunRayOpticalDepth+deltaDepth/2)*outScattering)*inScattering*deltaDepth;
                     //}
@@ -120,32 +197,4 @@
                 }
                 return color;
             }
-
-            fixed3 frag (v2f input) : SV_Target
-            {
-                fixed3 color=tex2D(_MainTex,input.uv);
-                float nonlinearDepth= SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, input.uv);
-                
-                float3 rayOrigin= _WorldSpaceCameraPos/scale;
-                float3 rayDir= normalize(input.viewVector);
-                float2 hitInfo=raySphere(planetCenter, planetRadius+atmosphereHeight ,rayOrigin,rayDir);
-                float dstToAtmosphere=hitInfo.x;
-                float dstThroughAtmosphere=hitInfo.y;
-                bool hasDepth;
-                if(UNITY_REVERSED_Z) hasDepth=nonlinearDepth>0;else hasDepth=nonlinearDepth<1;
-                if(hasDepth){
-                    float sceneDepth= LinearEyeDepth(nonlinearDepth)*length(input.viewVector)/scale;
-                    dstThroughAtmosphere=min(dstThroughAtmosphere,sceneDepth-dstToAtmosphere);
-                }else{
-                    //color=0;
-                }
-
-                if(dstThroughAtmosphere>0)
-                    color=raymarch(color, rayOrigin+rayDir*dstToAtmosphere,rayDir,dstThroughAtmosphere);
-
-                return color;
-            }
-            ENDCG
-        }
-    }
-}
+            */

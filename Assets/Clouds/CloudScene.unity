@@ -37,7 +37,7 @@ RenderSettings:
   m_ReflectionBounces: 1
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
-  m_Sun: {fileID: 0}
+  m_Sun: {fileID: 1334408668}
   m_IndirectSpecularColor: {r: 0.18028378, g: 0.22571412, b: 0.30692285, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
@@ -220,61 +220,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 4
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &373924770
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 373924773}
-  - component: {fileID: 373924772}
-  - component: {fileID: 373924771}
-  m_Layer: 0
-  m_Name: CloudVolume
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!65 &373924771
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 373924770}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 0
-  serializedVersion: 2
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!33 &373924772
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 373924770}
-  m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
---- !u!4 &373924773
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 373924770}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 250, z: 0}
-  m_LocalScale: {x: 20000, y: 300, z: 20000}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 2
+  m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1334408667
 GameObject:
@@ -466,7 +412,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 3
+  m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2111544315
 GameObject:
@@ -566,28 +512,43 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shader: {fileID: 4800000, guid: 380ac5cc0b1ef2847a0ba60476dc53cf, type: 3}
-  container: {fileID: 373924773}
+  planetCenter: {x: 0, y: -100000, z: 0}
+  alignGroundToPlanet: 1
+  planetRotation: {x: 0, y: 0, z: 0, w: 1}
+  planetRadius: 100000
+  cloudMinHeight: 400
+  cloudMaxHeight: 1000
+  atmosphereHeight: 10000
   noiseTexture: {fileID: 11700000, guid: 97ce3664c3766c1498261da6fe0c11b3, type: 2}
-  cloudScale: {x: 2000, y: 2000, z: 2000}
-  cloudOffset: {x: 0, y: 0, z: 0}
-  lightColor: {r: 1.3041189, g: 1.3041189, b: 1.3041189, a: 1}
+  detailNoiseTexture: {fileID: 11700000, guid: 8379d9c217bd40e4e8dfb7a5a30d8ec4, type: 2}
+  cloudScale: 3000
+  detailScaleDivisor: 5.7
+  cloudPositionOffset: {x: 0, y: 0, z: 0}
+  detailPositionOffset: {x: 0, y: 0, z: 0}
+  densityOffset: -0.19
+  detailStrength: 0.211
+  cloudType: 1
+  lightColor: {r: 4, g: 4, b: 4, a: 1}
   ambientColorUpper: {r: 0.23518157, g: 0.24111952, b: 0.3301887, a: 1}
-  ambientColorLower: {r: 0.047169805, g: 0.032775406, b: 0.027812386, a: 1}
-  absorption: {r: 0.745283, g: 0.745283, b: 0.745283, a: 1}
-  inscattering: {r: 1, g: 1, b: 1, a: 1}
-  miePhase: 0.06
-  powderCoeff: 0.07
-  densityMultiplier: 0.025
-  densityOffset: 0.08
-  cloudSize: 0.183
-  detailStrength: 0.1
-  detailScale: 29.11
-  stepSize: 100
-  stepSizeDistCoeff: 6.87
-  stepSizeDensityCoeff: 1.3
-  minStepSizeCoeff: 0.2
-  lightStepSize: 100
+  ambientColorLower: {r: 0.06741722, g: 0.09023174, b: 0.14150941, a: 1}
+  cloudAbsorption: {r: 1, g: 1, b: 1, a: 1}
+  cloudInscattering: {r: 1, g: 1, b: 1, a: 1}
+  cloudDensity: 0.01
+  cloudMiePhase: 0.26
+  invCloudPowderCoeff: 0.29
+  wavelengths: {x: 700, y: 530, z: 440}
+  atmosphereDensity: 1
+  useRayleigh: 1
+  atmosphereAbsorptionMultiplier: {r: 1, g: 1, b: 1, a: 1}
+  atmosphereInscatteringMultiplier: {r: 1, g: 1, b: 1, a: 1}
+  stepSize: 50
+  lightStepSize: 200
+  stepSizeDistCoeff: 0.1
+  invStepSizeDensityCoeff: 1
+  minStepSizeMultiplier: 1
   maxInScatteringPoints: 48
-  minInScatteringPoints: 16
+  minInScatteringPoints: 48
   numStepsLight: 2
+  useToneMapping: 1
+  toneMappingExposure: 1.66
   debug_text: 'noiseTexture dimensions: 128,128,128'

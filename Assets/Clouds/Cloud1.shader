@@ -40,139 +40,207 @@
                 output.viewVector = mul(unity_CameraToWorld, float4(viewVector,0));
                 return output;
             }
+            
+            //Planet Geometry
+            float4x4 worldToPlanetTRS;
+            float worldToPlanetS;
+            float planetRadius;
+            float cloudMinRadius;
+            float cloudDeltaRadius;
+            float atmosphereRadius;
+            
+            //Cloud Volume Textures
+            Texture3D<float4> NoiseTexture,DetailNoiseTexture;
+            SamplerState samplerNoiseTexture,samplerDetailNoiseTexture;
 
-
-            float3 BoundsMin, BoundsMax;
-
-            float3 CloudScale, CloudOffset;
-            float DensityOffset;
-            float CloudSize;
-            float DetailStrength,DetailScale;
-            float3 absorption,inscattering;
-            float3 mieCoeff;
-            float powderCoeff;
+            //Lighting
             float3 lightColor;
-            float3 ambientColorUpper;
-            float3 ambientColorLower;
+            float3 ambientColorUpper,ambientColorLower;
 
-            sampler2D _MainTex,_CameraDepthTexture;
+            //Cloud Shape
+            float cloudScale, detailScale;
+            float3 cloudPositionOffset, detailPositionOffset;
+            float densityOffset;
+            float detailStrength;
+            float cloudType;
+            
+            //Cloud Scattering
+            float3 cloudAbsorption,cloudInscattering;
+            float3 cloudMieCoeff;
+            float cloudPowderCoeff;
 
-            float stepSize,lightStepSize,stepSizeDistCoeff,stepSizeDensityCoeff,minStepSizeCoeff;
+            //Atmosphere Scattering
+            float3 atmosphereAbsorption, atmosphereInscattering;
+
+            //LightMarch Parameters
+            float stepSize,lightStepSize,stepSizeDistCoeff,stepSizeDensityCoeff,minStepSizeMultiplier;
             int maxInScatteringPoints;
             int minInScatteringPoints;
             int numStepsLight;
 
-            Texture3D<float4> NoiseTexture;
-            SamplerState samplerNoiseTexture;
+            //PostProcessing
+            float toneMappingExposure;
+            
+            sampler2D _MainTex,_CameraDepthTexture;
 
-
-            float2 rayBox(float3 minBound, float3 maxBound, float3 rayOrigin, float3 rayDir){
-                float3 t0=(minBound-rayOrigin)/rayDir;
-                float3 t1=(maxBound-rayOrigin)/rayDir;
-                float3 tmin=min(t0,t1);
-                float3 tmax=max(t0,t1);
-                float dstA=max(max(tmin.x,tmin.y),tmin.z);
-                float dstB=min(min(tmax.x,tmax.y),tmax.z);
-                float dstToBox=max(0,dstA);
-                float dstInsideBox=max(0,dstB-dstToBox);
-                return float2(dstToBox,dstInsideBox);
+            float2 raySphere(float sphereRadius, float3 rayOrigin, float3 rayDir){
+                //returns dstToSphere,dstThroughSphere
+                //dir is normalzied
+                float b=2*dot(rayOrigin,rayDir);
+                float c=dot(rayOrigin,rayOrigin)-sphereRadius*sphereRadius;
+                float d=b*b-4*c;
+                if(d<=0)
+                    return float2(0,0);
+                else{
+                    float s=sqrt(d);
+                    float dstToSphereNear=max(0,(-b-s)/2);
+                    float dstToSphereFar=(-b+s)/2;
+                    if(dstToSphereFar>=0)return float2(dstToSphereNear, dstToSphereFar-dstToSphereNear);
+                }
             }
+
+            float4 raySphereShell(float innerRadius, float outerRadius, float3 rayOrigin, float3 rayDir, float rayLength){
+                //only first cross
+                //returns start,end-start,gapStart-start,gatEnd-gapStart
+                //dir is normalzied
+                float b=2*dot(rayOrigin,rayDir);
+                float bb=b*b;
+                float rr=dot(rayOrigin,rayOrigin);
+
+                float d1=bb-4*(rr-outerRadius*outerRadius);
+                if(d1<=0)
+                    return float4(0,0,0,0);
+                else{
+                    float s1=sqrt(d1);
+                    float x4c=min((-b+s1)/2,rayLength);
+                    if(x4c<0)
+                        return float4(0,0,0,0);
+                    else{
+                        float x1c=max(0,(-b-s1)/2);
+                        float d2=bb-4*(rr-innerRadius*innerRadius);
+                        if(d2<0)
+                            return float4(x1c,max(x4c-x1c,0),max(x4c-x1c,0),0);
+                        else{
+                            float s2=sqrt(d2);
+                            float x3c=min((-b+s2)/2,rayLength);
+                            if(x3c<0)
+                                return float4(0,x4c,x4c,0);
+                            else{
+                                float x2=(-b-s2)/2;
+                                if(x2<0)
+                                    return float4(x3c,max(x4c-x3c,0),max(x4c-x3c,0),0);
+                                else
+                                    return float4(x1c,max(x4c-x1c,0),x2-x1c,max(x3c-x2,0));
+                            }
+                        }
+                    }
+                }
+            }
+            
+
 
             float getDensity(float3 position){
-                float3 uvw=(position-CloudOffset).xzy/CloudScale;
+                float3 uvw=(position-cloudPositionOffset).xzy/cloudScale;
                 float2 noise=NoiseTexture.SampleLevel(samplerNoiseTexture,uvw,0)-.5;
-                float height01=(position.y-BoundsMin.y)/(BoundsMax.y-BoundsMin.y);
-                float heightCoeff=4*height01*(1-height01)-.75;
-                return lerp(noise.r,noise.g,CloudSize)+DensityOffset+heightCoeff;
+                //float height01=(position.y-BoundsMin.y)/(BoundsMax.y-BoundsMin.y);
+                float height01=(length(position)-cloudMinRadius)/cloudDeltaRadius;
+                float heightCoeff=4*height01*(1-height01)-.75+(height01-.5);
+                return lerp(noise.r,noise.g,cloudType)+densityOffset+heightCoeff;
             }
             float getDensityDetail(float3 position){
-                float3 uvw=(position-CloudOffset).xzy/CloudScale;
-                return -DetailStrength*(NoiseTexture.SampleLevel(samplerNoiseTexture,uvw*DetailScale,0).g);
+                float3 uvw=(position-detailPositionOffset).xzy/detailScale;
+                return -detailStrength*(NoiseTexture.SampleLevel(samplerNoiseTexture,uvw,0).r);
             }
 
             float3 getAmbient(float3 position){
-                float height01=(position.y-BoundsMin.y)/(BoundsMax.y-BoundsMin.y);
+                //float height01=(position.y-BoundsMin.y)/(BoundsMax.y-BoundsMin.y);
+                float height01=(length(position)-cloudMinRadius)/cloudDeltaRadius;
                 return lerp(ambientColorLower,ambientColorUpper,height01);
             }
 
             float getMiePhase(float cosTh){
-                return mieCoeff.x*pow(mieCoeff.y-mieCoeff.z*cosTh,-1.5);
+                return cloudMieCoeff.x*pow(cloudMieCoeff.y-cloudMieCoeff.z*cosTh,-1.5);
+            }           
+            float getRayleighPhase(float cosTh){
+                return .75*(1+cosTh*cosTh);
             }
-            /*
-            float2 getDensity2(float3 position){
-                float3 uvw=(position-CloudOffset).xzy/CloudScale;
-                float4 noise=NoiseTexture.SampleLevel(samplerNoiseTexture,uvw,0)-.5;
-                float height01=(position.y-BoundsMin.y)/(BoundsMax.y-BoundsMin.y);
-                float heightCoeff=4*height01*(1-height01);
-                float value=noise.r+DensityOffset+heightCoeff-.75;
-                if(value>0){
-                    float4 noise2=NoiseTexture.SampleLevel(samplerNoiseTexture,uvw*DetailScale,0);
-                    value-=(1-noise2.r)*DetailStrength;
-                }
-                return float2(max(0,value)*DensityMultiplier,value);
-            }*/
 
             float3 lightmarch(float3 position, int steps){
                 float3 dirToLight=_WorldSpaceLightPos0.xyz;
-                float dstInsideBox=rayBox(BoundsMin,BoundsMax,position,dirToLight).y;
-                float stepSize=min(dstInsideBox/steps,lightStepSize);
+                float dstInsideCloud=raySphereShell(cloudMinRadius,cloudMinRadius+cloudDeltaRadius,position,dirToLight,1e38).y;
+                float stepSize=min(dstInsideCloud/steps,lightStepSize);
                 float totalDensity=0;
-                totalDensity+=max(0,getDensity(position));
+                totalDensity+=saturate(getDensity(position));
                 for(int i=0;i<steps;++i){
                     position+=dirToLight*stepSize;
-                    totalDensity+=max(0,getDensity(position));
+                    totalDensity+=saturate(getDensity(position));
                 }
-                float3 opticalPath=totalDensity*stepSize*absorption;
-                return exp(-opticalPath)*(1-exp(-powderCoeff*opticalPath*opticalPath));
+                float3 opticalPath=totalDensity*stepSize*cloudAbsorption;
+                return exp(-opticalPath)*(1-exp(-cloudPowderCoeff*opticalPath*opticalPath));
             }
 
-            float3 raymarch(float3 color, float3 rayOrigin, float3 rayDir, float rayLength){
+            float3 raymarch(float3 color, float3 rayOrigin, float3 rayDir, float rayLength, float gapStart, float gapLength){
                 float dst=0;
                 float totalDensity=0;
                 float3 light=0;
+                float3 transmittance=float3(1,1,1);
 
                 float3 dirToLight=_WorldSpaceLightPos0.xyz;
                 float miePhase=getMiePhase(dot(rayDir,dirToLight));
-                float3 transmittance=float3(1,1,1);
 
                 for(int i=0;i<maxInScatteringPoints;++i){
+                    if(dst>gapStart){dst+=gapLength;gapStart=1e38;}
                     if(dst>rayLength)break;
+
                     float3 pos=rayOrigin+rayDir*dst;
                     float density=getDensity(pos);
-                    float step=min(stepSize*clamp(stepSizeDensityCoeff*abs(density),minStepSizeCoeff,1)*clamp(dst/stepSize*stepSizeDistCoeff,1,4),rayLength/minInScatteringPoints-.001f);
+                    //float step=min(stepSize*clamp(stepSizeDensityCoeff*abs(density),minStepSizeMultiplier,1)*clamp(dst/stepSize*stepSizeDistCoeff,1,10),(rayLength-gapLength)/minInScatteringPoints-.001f);
+                    float step=(rayLength-gapLength)/minInScatteringPoints;
                     if(density>0)
                         density+=getDensityDetail(pos);
                     if(density>0){
 
                         totalDensity+=density*step;
-                        transmittance=exp(-totalDensity*absorption);
-                        light+=max(0,density)*step*inscattering*transmittance*(miePhase*lightmarch(pos,numStepsLight-1)*lightColor+getAmbient(pos));
+                        transmittance=exp(-totalDensity*cloudAbsorption);
+                        light+=saturate(density)*step*cloudInscattering*transmittance*(miePhase*lightmarch(pos,numStepsLight-1)*lightColor+getAmbient(pos));
                     }
                     dst+=step;
                 }
-                return color*transmittance+light;
+                color= color*transmittance+light;
+                return color;
             }
 
+
+            
+            float3 toneMapping(float3 color){
+                //return 1-exp(-toneMappingExposure*color);
+                //float l=max(max(color.r,color.g),color.b);
+                float l=dot(float3(.2126,.7152,.0722),color);
+                return color/l*(1-exp(-toneMappingExposure*l));
+            }
 
             fixed4 frag (v2f input) : SV_Target
             {
                 fixed4 col = tex2D(_MainTex, input.uv);
-                float3 rayOrigin=_WorldSpaceCameraPos;
-                float3 rayDir=normalize(input.viewVector);
-                float2 rayBoxInfo=rayBox(BoundsMin,BoundsMax,rayOrigin,rayDir);
-                float dstToBox=rayBoxInfo.x;
-                float dstThroughBox=rayBoxInfo.y;
-                
-                float nonLinearDepth=SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture,input.uv);
-                bool hasDepth;
-                if(UNITY_REVERSED_Z) hasDepth=nonLinearDepth>0;else hasDepth=nonLinearDepth<1;
-                if(hasDepth){
-                    float depth=LinearEyeDepth(nonLinearDepth)*length(input.viewVector);
-                    dstThroughBox=min(depth-dstToBox,dstThroughBox);
-                }
 
-                if(dstThroughBox>0)
-                    col.xyz=raymarch(col,rayOrigin+rayDir*dstToBox,rayDir,dstThroughBox);
+                float nonLinearDepth=SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture,input.uv);
+                bool hasDepth; if(UNITY_REVERSED_Z) hasDepth=nonLinearDepth>0;else hasDepth=nonLinearDepth<1;
+                float depth; if(hasDepth)depth=LinearEyeDepth(nonLinearDepth)*length(input.viewVector)*worldToPlanetS; else depth=1e38;
+
+                float3 rayOrigin=mul(worldToPlanetTRS,float4(_WorldSpaceCameraPos,1));
+                float3 rayDir=normalize(mul(worldToPlanetTRS,input.viewVector));
+
+                float4 cloudHit=raySphereShell(cloudMinRadius,cloudMinRadius+cloudDeltaRadius,rayOrigin,rayDir,depth);
+                float dstToCloud=cloudHit.x;
+                float dstThroughCloud=cloudHit.y;
+                
+
+                if(dstThroughCloud>0)
+                    col.xyz=raymarch(col,rayOrigin+rayDir*dstToCloud,rayDir,dstThroughCloud,cloudHit.z,cloudHit.w);
+                    
+                //HRD mapping, which is very important for realitistic picture
+                if(toneMappingExposure>0)
+                    col.xyz=toneMapping(col.xyz);
 
                 return col;
             }
