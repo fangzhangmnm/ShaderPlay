@@ -5,46 +5,51 @@ using UnityEngine;
 [ExecuteInEditMode, ImageEffectAllowedInSceneView]
 public class Atmosphere1 : MonoBehaviour
 {
-    public Shader shader; public Material mat;new public Camera camera;
+    public Shader shader; private Material mat;new private Camera camera;
 
     [Header("Planet Geometry")]
     public Transform planetRef;
     public bool overridePlanetCenter = true;
     public Vector3 planetCenter;
     public Quaternion planetRotation = Quaternion.identity;
-    public float planetRadius=6371000;
-    public float atmosphereMaxHeight=27000;
-    public float scaleForNumericalStability = 100000;
-    public float sceneScaleMultiplier = 1;
+    public float planetRadius = 6371000f;
+    public float atmosphereMaxHeight=60000f;
+    public float scaleForNumericalStability = 100000f;
+    public float sceneScaleMultiplier = 1f;
 
     [Header("Sun Light")]
     public new Light light;
     [Range(500, 15000)] public float lightTemperature = 6500f;//in space
-    public float lightIntensity = 1.5f;
+    public float lightIntensity = 1.2f;
     public bool overrideLightColorFromTemperature=true;
-    [ColorUsage(true, true)] public Color lightColor;// = new Color(1.0997f, 0.9771f, 0.9329f,0)*1.5f+new Color(0,0,0,1);//http://www.thetenthplanet.de/archives/4519
-    public float lightColorLDRBoost = 1;
+    [ColorUsage(true, true)] public Color lightColor;
 
     [Header("Atmosphere")]
-    public float atmosphereDensityFalloffHeight = 9000; //https://www.engineeringtoolbox.com/standard-atmosphere-d_604.html
+    public float atmosphereDensity = 1.224f;
+    public float atmosphereScatteringMultiplier=1e-5f/1.224f;
 
-    public float atmosphereDensity = 1.224f; 
-    public float atmosphereScatteringMultiplier = 2.4845e-5f / 1.224f; //https://advances.realtimerendering.com/s2021/jpatry_advances2021/index.html
-    public bool overrideAtmosphereAbsorption = true;
-    [ColorUsage(true, true)] public Color atmosphereAbsorption = Color.white;
-    [ColorUsage(true, true)] public Color atmosphereExtinsion = Color.black;
-    [ColorUsage(true, true)] public Color atmosphereEmission = Color.black;
-    public Vector3 wavelengths = new Vector3(598, 524, 445);//new Vector3(615, 535, 445);//http://www.thetenthplanet.de/archives/4519
-    public bool overrideAtmosphereRayleighInscattering = true;
-    [ColorUsage(true, true)] public Color atmosphereRayleighInscattering = Color.white;
-    [ColorUsage(true, true)] public Color atmosphereMieInscattering = new Color(.1f, .1f, .1f, 1);
-    [Range(-1, 1)] public float atmosphereMiePhase = .95f;
+    [ColorUsage(false, true)] public Color atmosphereRayleighScattering = new Color(.5802f, 1.3558f, 3.31f);
+    [ColorUsage(false, true)] public Color atmosphereRayleighAbsorption = new Color(.5802f, 1.3558f, 3.31f);
+    public Vector3 atmosphereRayleighPhaseCoeff=new Vector3(1.12f,.4f,0f)/(4*Mathf.PI);
+    public float atmosphereRayleighScaleHeight=8000f;
 
-    [Header("LightMarch Parameters")]
-    public int numInScatteringPoints = 10;
-    public int numOpticalDepthPoints = 10;
+    public float atmosphereMieMultiplier = 1f;
+    [ColorUsage(false, true)] public Color atmosphereMieScattering = new Color(.3996f, .3996f, .3996f);
+    [ColorUsage(false, true)] public Color atmosphereMieAbsorption = new Color(.440f, .440f, .440f);
+    [Range(-0.99f,0.99f)]public float atmosphereMieG=0.8f;
+    public float atmosphereMieScaleHeight=1200f;
 
-    [Header("PostProcessing Parameters")]
+    [ColorUsage(false, true)] public Color atmosphereOzoneAbsorption = new Color(.0650f, .1881f, .0085f);
+    public float atmosphereOzoneMinHeight = 10000f;
+    public float atmosphereOzoneMaxHeight = 40000f;
+
+    [Header("LightMarch")]
+    public float fixedStepLength = 1000f;
+    public int fixedStepNum = 5;
+    public int totalStepNum = 10;
+
+    [Header("PostProcessing")]
+    public float SkyLightMultiplier = 4f;
     public bool useToneMapping = true;
     [Range(-10, 10)] public float toneMappingLogExposure = 0;
     //http://www.thetenthplanet.de/archives/4519
@@ -58,36 +63,37 @@ public class Atmosphere1 : MonoBehaviour
 
     [Header("Update Scene Lights")]
     public bool updateSceneLights = false;
-    public float ambientSkyColorMultiplier = 1f;
-    public float ambientEquatorRaySlope = .5f;
-    public float ambientEquatorColorMultiplier = 1f;
-    public bool adjustLDRExposure = true;
+    public float sceneLightMultiplier = 1f;
+    public float sceneLightDirectionalLightColorMultiplier = 1f;
+    public float sceneLightAmbientSkyColorMultiplier = 1f;
+    public float sceneLightAmbientEquatorColorMultiplier = 1f;
+    public float sceneLightAmbientEquatorRaySlope = .1f;
 
     [Multiline(10)] public string debug_text;
     ShaderEmulator emulator;
 
     private void OnRenderImage(RenderTexture source, RenderTexture destination)
     {
-        ValidateParameters();
+        UpdateParameters();
         UpdateMaterial();
+        if (updateSceneLights)
+            UpdateSceneLights();
 
         Graphics.Blit(source, destination, mat);
 
-        if (updateSceneLights && mat)
-            UpdateSceneLights();
     }
     private void OnValidate()
     {
-        Debug.Assert(QualitySettings.activeColorSpace == ColorSpace.Linear);
-        if (light == null)
-            light = FindObjectOfType<Light>();
-        camera = GetComponent<Camera>();
-        camera.depthTextureMode = DepthTextureMode.Depth;
-        ValidateParameters();
+        if (light == null) light = FindObjectOfType<Light>();
+        UpdateParameters();
         UpdateMaterial();
-        if (updateSceneLights && mat)
+        if (updateSceneLights)
             UpdateSceneLights();
-        //debug_text = $"{RGB2SpectralColor(atmosphereRayleighInscattering) * atmosphereDensity *atmosphereScatteringMultiplier * 1e5f}";
+        Debug.Assert(QualitySettings.activeColorSpace == ColorSpace.Linear);
+    }
+    private void Reset()
+    {
+        OnValidate();
     }
 
     void UpdateMaterial()
@@ -96,28 +102,35 @@ public class Atmosphere1 : MonoBehaviour
         float scale = scaleForNumericalStability;
 
         //Planet Geometry
-        mat.SetMatrix("worldToPlanetTRS",
-            Matrix4x4.Inverse(Matrix4x4.TRS(planetCenter / sceneScaleMultiplier, planetRotation, Vector3.one * scale / sceneScaleMultiplier)));
+        mat.SetMatrix("worldToPlanetTRS",Matrix4x4.Inverse(Matrix4x4.TRS(planetCenter / sceneScaleMultiplier, planetRotation, Vector3.one * scale / sceneScaleMultiplier)));
         mat.SetFloat("depthToPlanetS", sceneScaleMultiplier / scale);
-        mat.SetFloat("zeroHeightRadius", (planetRadius) / scale);
+        mat.SetFloat("planetRadius", (planetRadius) / scale);
         mat.SetFloat("atmosphereRadius", (atmosphereMaxHeight + planetRadius) / scale);
 
         //Sun Light
-        mat.SetVector("dirToLight", -light.transform.forward);
-        mat.SetVector("lightColor", RGB2SpectralColor(lightColor*lightColorLDRBoost));
+        mat.SetVector("dirToSunlight", -light.transform.forward);
+        mat.SetVector("sunlightColor", RGB2SpectralColor(lightColor*Mathf.PI* SkyLightMultiplier)); //should be pi instead of 4 pi. Why?
 
         //Atmosphere
-        mat.SetFloat("atmosphereDensityScaleHeight", atmosphereDensityFalloffHeight/scale);
-        mat.SetVector("atmosphereAbsorption", scale * atmosphereDensity * atmosphereScatteringMultiplier * RGB2SpectralColor(atmosphereAbsorption));
-        mat.SetVector("atmosphereEmission", scale * atmosphereDensity * atmosphereScatteringMultiplier * RGB2SpectralColor(atmosphereEmission));
-        mat.SetVector("atmosphereRayleighInscattering", scale * atmosphereDensity * atmosphereScatteringMultiplier * RGB2SpectralColor(atmosphereRayleighInscattering));
-        mat.SetVector("atmosphereMieInscattering", scale * atmosphereDensity * atmosphereScatteringMultiplier * RGB2SpectralColor(atmosphereMieInscattering));
-        float g2 = atmosphereMiePhase * atmosphereMiePhase;
-        mat.SetVector("atmosphereMieCoeff", new Vector3(1.5f * (1 - g2) / (2 + g2), 1 + g2, 2 * atmosphereMiePhase));
+        mat.SetVector("atmosphereRayleighScattering", scale * atmosphereDensity * atmosphereScatteringMultiplier * RGB2SpectralColor(atmosphereRayleighScattering));
+        mat.SetVector("atmosphereRayleighAbsorption", scale * atmosphereDensity * atmosphereScatteringMultiplier * RGB2SpectralColor(atmosphereRayleighAbsorption));
+        mat.SetVector("atmosphereRayleighPhaseCoeff", atmosphereRayleighPhaseCoeff);
+        mat.SetFloat("atmosphereRayleighScaleHeight", atmosphereRayleighScaleHeight / scale);
+
+        mat.SetVector("atmosphereMieScattering", scale * atmosphereDensity * atmosphereScatteringMultiplier * atmosphereMieMultiplier * RGB2SpectralColor(atmosphereMieScattering));
+        mat.SetVector("atmosphereMieAbsorption", scale * atmosphereDensity * atmosphereScatteringMultiplier * atmosphereMieMultiplier * RGB2SpectralColor(atmosphereMieAbsorption));
+        float g2 = atmosphereMieG * atmosphereMieG;
+        mat.SetVector("atmosphereMiePhaseCoeff", new Vector3(3f/(8f*Mathf.PI) * (1 - g2) / (2 + g2), 1 + g2, 2 * atmosphereMieG));
+        mat.SetFloat("atmosphereMieScaleHeight", atmosphereMieScaleHeight / scale);
+
+        mat.SetVector("atmosphereOzoneAbsorption", scale * atmosphereDensity * atmosphereScatteringMultiplier * RGB2SpectralColor(atmosphereOzoneAbsorption));
+        mat.SetFloat("atmosphereOzoneMinRadius", (atmosphereOzoneMinHeight + planetRadius) / scale);
+        mat.SetFloat("atmosphereOzoneMaxRadius", (atmosphereOzoneMaxHeight + planetRadius) / scale);
 
         //LightMarch Parameters
-        mat.SetInt("numInScatteringPoints", numInScatteringPoints);
-        mat.SetInt("numOpticalDepthPoints", numOpticalDepthPoints);
+        mat.SetFloat("fixedStepLength", fixedStepLength/scale);
+        mat.SetInt("fixedStepNum", fixedStepNum);
+        mat.SetInt("totalStepNum", totalStepNum);
 
         //PostProcessing
         mat.SetFloat("toneMappingExposure", useToneMapping ? Mathf.Exp(toneMappingLogExposure) : 0);
@@ -126,9 +139,11 @@ public class Atmosphere1 : MonoBehaviour
 
     }
 
-    private void ValidateParameters()
+    private void UpdateParameters()
     {
         if (!mat || mat.shader != shader && shader) { mat = new Material(shader); }
+        camera = GetComponent<Camera>();
+        camera.depthTextureMode = DepthTextureMode.Depth;
 
         if (overridePlanetCenter)
         {
@@ -138,79 +153,59 @@ public class Atmosphere1 : MonoBehaviour
                 planetCenter = planetRef.position;
         }
         RGB2spectralColorMatrix = Matrix4x4.Inverse(spectralColor2RGBMatrix);
-        if (overrideAtmosphereRayleighInscattering)
-        {
-            Vector3 wavelengthAdjust = new Vector3(Mathf.Pow(wavelengths.x, -4), Mathf.Pow(wavelengths.y, -4), Mathf.Pow(wavelengths.z, -4));
-            wavelengthAdjust /= wavelengthAdjust.z;
-            atmosphereRayleighInscattering = SpectralColor2RGB(wavelengthAdjust);
-            //(0.76224e-5,1.2935e-5,2.4845e-5)
-        }
-        if (overrideAtmosphereAbsorption)
-            atmosphereAbsorption = atmosphereRayleighInscattering + atmosphereMieInscattering+atmosphereExtinsion;
-        if (overrideLightColorFromTemperature)
-            lightColor = Temperature2RGB(lightTemperature) * lightIntensity;
+        if (overrideLightColorFromTemperature)lightColor = Temperature2RGB(lightTemperature) * lightIntensity;
 
+        fixedStepNum = Mathf.Min(fixedStepNum, totalStepNum);
     }
 
     void UpdateSceneLights()
     {
+        Debug.Assert(mat);
         if (!updateSceneLights) return;
         if (emulator == null) emulator = new ShaderEmulator();
         emulator.ReadMaterial(mat);
+
         emulator.includeMieInscattering = false;
-
-        emulator.frag(camera.transform.position, -light.transform.forward, out Vector3 t1, out Vector3 l1);
-        Color l1c= SpectralColor2RGB((Vector3.Scale(t1, RGB2SpectralColor(lightColor*lightColorLDRBoost))));//omit mie scattering
-
-
-
+        //do not multiply lightColor by pi because input is in unit of color
+        Color l1c= sceneLightDirectionalLightColorMultiplier* sceneLightMultiplier* SpectralColor2RGB(
+            emulator.frag(RGB2SpectralColor(lightColor), camera.transform.position, -light.transform.forward)
+            );
         light.intensity = l1c.maxColorComponent;
-        l1c.a = l1c.maxColorComponent;
-        light.color = l1c / light.intensity;
+        if(light.intensity>0)light.color = l1c / light.intensity;
 
-        //RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-        //emulator.frag(camera.transform.position, Vector3.up, out Vector3 t2, out Vector3 l2);
-        //RenderSettings.ambientLight =  SpectralColor2RGB(ambientSkyLightMultiplier * l2);
-
-        
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
 
-        emulator.frag(camera.transform.position, Vector3.up, out Vector3 t2, out Vector3 l2);
-        RenderSettings.ambientSkyColor = SpectralColor2RGB((ambientSkyColorMultiplier * l2));
+        emulator.includeMieInscattering = false;
+        RenderSettings.ambientSkyColor = sceneLightAmbientSkyColorMultiplier * sceneLightMultiplier* SpectralColor2RGB(
+            emulator.frag(Vector3.zero, camera.transform.position, Vector3.up)
+            );
 
 
-        Vector3 equatorDir = Vector3.Normalize(Vector3.ProjectOnPlane(light.transform.forward, Vector3.up)+ ambientEquatorRaySlope*Vector3.up);
-        emulator.frag(camera.transform.position, equatorDir, out Vector3 t3, out Vector3 l3);
-        RenderSettings.ambientEquatorColor = SpectralColor2RGB((ambientEquatorColorMultiplier * l3));
-        
-        RenderSettings.ambientGroundColor = .1f * RenderSettings.ambientEquatorColor + .3f * RenderSettings.ambientSkyColor;
+        emulator.includeMieInscattering = true;
+        Vector3 equatorDir = Vector3.Normalize(Vector3.ProjectOnPlane(light.transform.forward, Vector3.up)+ sceneLightAmbientEquatorRaySlope*Vector3.up);
+        RenderSettings.ambientEquatorColor = sceneLightAmbientEquatorColorMultiplier * sceneLightMultiplier* SpectralColor2RGB(
+            emulator.frag(Vector3.zero, camera.transform.position, equatorDir)
+            );
 
-        if (adjustLDRExposure)
-        {
-            lightColorLDRBoost = Mathf.Clamp( 1.5f* lightColorLDRBoost / light.intensity, .1f,10);
-        }
+        RenderSettings.ambientGroundColor = .4f * RenderSettings.ambientEquatorColor + .2f * RenderSettings.ambientSkyColor;
 
     }
 
-    Color SpectralColor2RGB(Vector3 color)
-    {
-        if(useColorSpace)
-            color = spectralColor2RGBMatrix.MultiplyVector(color);
-        return new Color(color.x, color.y, color.z,1);
-    }
+
     Vector3 exp(Vector3 v) => new Vector3(Mathf.Exp(v.x), Mathf.Exp(v.y), Mathf.Exp(v.z));
-    Vector3 ToneMapping(Vector3 color)
-    {
-        if(useToneMapping)
-            color= Vector3.one - exp(-color * toneMappingLogExposure);
-        return color;
-    }
+    Vector3 ToneMapping(Vector3 color) => useToneMapping ? Vector3.one - exp(-color * toneMappingLogExposure) : color;
     Vector3 RGB2SpectralColor(Color color)
     {
         Vector3 v = new Vector3(color.r, color.g, color.b);
         if (useColorSpace)
             v = RGB2spectralColorMatrix.MultiplyVector(v);
         return v;
+    }
+    Color SpectralColor2RGB(Vector3 color)
+    {
+        if (useColorSpace)
+            color = spectralColor2RGBMatrix.MultiplyVector(color);
+        return new Color(Mathf.Max(0,color.x), Mathf.Max(0,color.y), Mathf.Max(0,color.z), 1);
     }
     Color Temperature2RGB(float temperature)
     {
@@ -243,25 +238,34 @@ public class Atmosphere1 : MonoBehaviour
     {
         //Planet Geometry
         Matrix4x4 worldToPlanetTRS;
+        float depthToPlanetS;
         float planetRadius;
         float atmosphereRadius;
 
         //Sun Light
-        Vector3 dirToLight;
-        Vector3 lightColor;
+        Vector3 dirToSunlight;
+        Vector3 sunlightColor;
 
         //Atmosphere
-        float atmosphereDensityScaleHeight;
-        Vector3 atmosphereAbsorption;
-        Vector3 atmosphereEmission;
-        Vector3 atmosphereRayleighInscattering;
-        Vector3 atmosphereMieInscattering;
-        Vector3 atmosphereMieCoeff;
+        Vector3 atmosphereRayleighScattering;
+        Vector3 atmosphereRayleighAbsorption;
+        Vector3 atmosphereRayleighPhaseCoeff;
+        float atmosphereRayleighScaleHeight;
+
+        Vector3 atmosphereMieScattering;
+        Vector3 atmosphereMieAbsorption;
+        Vector3 atmosphereMiePhaseCoeff;
+        float atmosphereMieScaleHeight;
+
+        Vector3 atmosphereOzoneAbsorption;
+        float atmosphereOzoneMinRadius;
+        float atmosphereOzoneMaxRadius;
         public bool includeMieInscattering = true;
-        
+
         //LightMarch Parameters
-        int numInScatteringPoints;
-        int numOpticalDepthPoints;
+        float fixedStepLength;
+        int fixedStepNum;
+        int totalStepNum;
 
         //PostProcessing
         float toneMappingExposure;
@@ -271,21 +275,30 @@ public class Atmosphere1 : MonoBehaviour
         public void ReadMaterial(Material mat)
         {
             worldToPlanetTRS = mat.GetMatrix("worldToPlanetTRS");
-            planetRadius = mat.GetFloat("zeroHeightRadius");
+            depthToPlanetS = mat.GetFloat("depthToPlanetS");
+            planetRadius = mat.GetFloat("planetRadius");
             atmosphereRadius = mat.GetFloat("atmosphereRadius");
 
-            dirToLight = mat.GetVector("dirToLight");
-            lightColor = mat.GetVector("lightColor");
+            dirToSunlight = mat.GetVector("dirToSunlight");
+            sunlightColor = mat.GetVector("sunlightColor");
 
-            atmosphereDensityScaleHeight = mat.GetFloat("atmosphereDensityScaleHeight");
-            atmosphereAbsorption = mat.GetVector("atmosphereAbsorption");
-            atmosphereEmission = mat.GetVector("atmosphereEmission");
-            atmosphereRayleighInscattering = mat.GetVector("atmosphereRayleighInscattering");
-            atmosphereMieInscattering = mat.GetVector("atmosphereMieInscattering");
-            atmosphereMieCoeff = mat.GetVector("atmosphereMieCoeff");
+            atmosphereRayleighScattering = mat.GetVector("atmosphereRayleighScattering");
+            atmosphereRayleighAbsorption = mat.GetVector("atmosphereRayleighAbsorption");
+            atmosphereRayleighPhaseCoeff = mat.GetVector("atmosphereRayleighPhaseCoeff");
+            atmosphereRayleighScaleHeight = mat.GetFloat("atmosphereRayleighScaleHeight");
 
-            numInScatteringPoints = mat.GetInt("numInScatteringPoints");
-            numOpticalDepthPoints = mat.GetInt("numOpticalDepthPoints");
+            atmosphereMieScattering = mat.GetVector("atmosphereMieScattering");
+            atmosphereMieAbsorption = mat.GetVector("atmosphereMieAbsorption");
+            atmosphereMiePhaseCoeff = mat.GetVector("atmosphereMiePhaseCoeff");
+            atmosphereMieScaleHeight = mat.GetFloat("atmosphereMieScaleHeight");
+
+            atmosphereOzoneAbsorption = mat.GetVector("atmosphereOzoneAbsorption");
+            atmosphereOzoneMinRadius = mat.GetFloat("atmosphereOzoneMinRadius");
+            atmosphereOzoneMaxRadius = mat.GetFloat("atmosphereOzoneMaxRadius");
+
+            fixedStepLength = mat.GetFloat("fixedStepLength");
+            fixedStepNum = mat.GetInt("fixedStepNum");
+            totalStepNum = mat.GetInt("totalStepNum");
 
             toneMappingExposure = mat.GetFloat("toneMappingExposure");
             spectralColor2RGB = mat.GetMatrix("spectralColor2RGB");
@@ -294,22 +307,37 @@ public class Atmosphere1 : MonoBehaviour
 
 
         Vector3 exp(Vector3 v) => new Vector3(Mathf.Exp(v.x), Mathf.Exp(v.y), Mathf.Exp(v.z));
-        float miePhase(float cosTh, Vector3 mieCoeff)
+        float step(float a, float b) => a < b ? 1 : 0;
+
+        float rayleighPhaseFunction(float cosTh, Vector3 rayleighPhaseCoeff)
         {
-            return Mathf.Clamp(mieCoeff.x * Mathf.Pow(mieCoeff.y - mieCoeff.z * cosTh, -1.5f), 0, 100);
+            return rayleighPhaseCoeff.x + cosTh * (rayleighPhaseCoeff.y + cosTh * (rayleighPhaseCoeff.z));
         }
-        float rayleighPhase(float cosTh)
+        float miePhaseFunction(float cosTh, Vector3 miePhaseCoeff)
         {
-            return 1.12f + .4f * cosTh;
-            //return .75f * (1 + cosTh * cosTh);
+            return Mathf.Clamp(miePhaseCoeff.x * Mathf.Pow(miePhaseCoeff.y - miePhaseCoeff.z * cosTh, -1.5f), 0, 100);
         }
 
-        Vector2 raySphere(float sphereRadius, Vector3 rayOrigin, Vector3 rayDir)
+        float chapman(float x, float cosChi)
         {
-            //returns dstToSphere,dstThroughSphere
-            //dir is normalzied
-            float b = 2 * Vector3.Dot(rayOrigin, rayDir);
-            float c = Vector3.Dot(rayOrigin, rayOrigin) - sphereRadius * sphereRadius;
+            //http://www.thetenthplanet.de/archives/4519
+            float c = Mathf.Sqrt(1.57079632679f * x);
+            if (cosChi >= 0)
+                return c / ((c - 1) * cosChi + 1);
+            else
+            {
+                float sinChi = Mathf.Sqrt(Mathf.Clamp01(1 - cosChi * cosChi));
+                return c / ((c - 1) * cosChi - 1) + 2 * c * Mathf.Exp(x - x * sinChi) * Mathf.Sqrt(sinChi);
+            }
+        }
+
+        Vector2 raySphere(float R, float rSquare, float rCosChi)
+        {
+            //R: planet radius
+            //r: dist to planet center
+            //cosChi: angle between ray and local zenith
+            float b = 2 * rCosChi;
+            float c = rSquare - R * R;
             float d = b * b - 4 * c;
             if (d > 0)
             {
@@ -320,62 +348,92 @@ public class Atmosphere1 : MonoBehaviour
             }
             return new Vector2(0, 0);
         }
-        float getDensity(Vector3 pos)
+
+        struct Atmosphere_Output
         {
-            float height = Mathf.Max(Vector3.Magnitude(pos) - planetRadius,0) ;
-            return Mathf.Exp(-height / atmosphereDensityScaleHeight);
+            public Vector3 scattering;
+            public Vector3 absorption;
+            public Vector3 inscatteringLightDepth;
+        };
+
+        Atmosphere_Output atmosphereStep(float r, float h, float cosChi, float rayleighPhaseStrength, float miePhaseStrength)
+        {
+
+            //cosChi: angle between dirToLight and local zenith
+
+            Atmosphere_Output output;
+
+
+            float rayleighExp = Mathf.Exp(-h / atmosphereRayleighScaleHeight);
+            float mieExp = Mathf.Exp(-h / atmosphereMieScaleHeight);
+            float ozoneExistence = step(atmosphereOzoneMinRadius, r) - step(atmosphereOzoneMaxRadius, r);
+
+            //absorption at this point
+            output.absorption = rayleighExp * atmosphereRayleighAbsorption + mieExp * atmosphereMieAbsorption + ozoneExistence * atmosphereOzoneAbsorption;
+
+            //get the depth of inscattering lights
+            output.inscatteringLightDepth =
+                 atmosphereRayleighAbsorption * rayleighExp * atmosphereRayleighScaleHeight * chapman(r / atmosphereRayleighScaleHeight, cosChi)
+                + atmosphereMieAbsorption * mieExp * atmosphereMieScaleHeight * chapman(r / atmosphereMieScaleHeight, cosChi)
+                + atmosphereOzoneAbsorption * (raySphere(atmosphereOzoneMaxRadius, r * r, r * cosChi).y - raySphere(atmosphereOzoneMinRadius, r * r, r * cosChi).y);
+
+            output.scattering =
+                 rayleighExp * atmosphereRayleighScattering * rayleighPhaseStrength
+                + mieExp * atmosphereMieScattering * miePhaseStrength;
+
+            return output;
         }
-        float getOpticalDepth(Vector3 rayOrigin, Vector3 rayDir, float rayLength)
+
+        Vector3 raymarch(Vector3 color, Vector3 rayOrigin, Vector3 rayDir, float rayLength)
         {
-            float step = rayLength / numOpticalDepthPoints;
-            Vector3 pos = rayOrigin + rayDir * (step * .5f);
-            float opticalDepth = 0;
-            for (int i = 0; i < numOpticalDepthPoints; ++i)
+
+            Vector3 totalDepth = Vector3.zero;
+            Vector3 scatteredLight = Vector3.zero;
+
+            float cosTh = Vector3.Dot(rayDir, dirToSunlight);
+            float rayleighPhaseStrength = rayleighPhaseFunction(cosTh, atmosphereRayleighPhaseCoeff);
+            float miePhaseStrength = miePhaseFunction(cosTh, atmosphereMiePhaseCoeff);
+            if (!includeMieInscattering) miePhaseStrength = 0;
+
+            float step = Mathf.Min(fixedStepLength, rayLength / totalStepNum);
+            float longStep = (rayLength - step * fixedStepNum) / (totalStepNum - fixedStepNum);
+            float dst = 0;
+            for (int i = 0; i < totalStepNum; ++i)
             {
-                opticalDepth += getDensity(pos) * step;
-                pos += rayDir * step;
+                if (i >= fixedStepNum)
+                    step = longStep;
+
+                dst += step / 2;
+
+                Vector3 scatterPos = rayOrigin + rayDir * dst;
+
+                float r = Vector3.Magnitude(scatterPos);
+                float h = r - planetRadius;
+                float cosChi = Vector3.Dot(scatterPos, dirToSunlight) / r;
+
+                Atmosphere_Output output1 = atmosphereStep(r, h, cosChi, rayleighPhaseStrength, miePhaseStrength);
+
+                totalDepth += .5f * step * output1.absorption;
+                scatteredLight += step * Vector3.Scale(Vector3.Scale(sunlightColor, output1.scattering) , exp(-(totalDepth + output1.inscatteringLightDepth)));
+                totalDepth += .5f * step * output1.absorption;
+
+                dst += step/2;
             }
-            return opticalDepth;
+            return Vector3.Scale(color , exp(-totalDepth)) + scatteredLight;
         }
-        void raymarch(Vector3 rayOrigin, Vector3 rayDir, float rayLength, out Vector3 transmittance, out Vector3 light)
-        {
-            float dst;
-            light = Vector3.zero;
-            transmittance = new Vector3(1, 1, 1);
 
-            float cosTh = Vector3.Dot(rayDir, dirToLight);
-            Vector3 atmosphereInscatteringLight = Vector3.Scale(lightColor ,atmosphereRayleighInscattering * rayleighPhase(cosTh));
-            if(includeMieInscattering)
-                atmosphereInscatteringLight+= Vector3.Scale(lightColor,atmosphereMieInscattering * miePhase(cosTh, atmosphereMieCoeff));
-            float step = rayLength / numInScatteringPoints;
-            dst = step / 2;
-            for (int i = 0; i < numInScatteringPoints; ++i)
-            {
-                Vector3 pos = rayOrigin + rayDir * dst;
-                float atmosphereStepDensity = getDensity(pos) * step;
-
-                transmittance =Vector3.Scale(transmittance,exp(-atmosphereStepDensity * atmosphereAbsorption));
-                
-                Vector2 hitInfo = raySphere(atmosphereRadius, pos, dirToLight);
-                float inscatteringAtmosphereDepth = getOpticalDepth(pos, dirToLight, hitInfo.y);
-                //Todo Sphere Shadow
-                light += Vector3.Scale(atmosphereEmission + Vector3.Scale(atmosphereInscatteringLight , exp(- inscatteringAtmosphereDepth*atmosphereAbsorption)) , atmosphereStepDensity * transmittance);
-                dst += step;
-            }
-
-        }
-        public void frag(Vector3 cameraPos, Vector3 viewVector, out Vector3 transmittance, out Vector3 light)
+        public Vector3 frag(Vector3 color, Vector3 cameraPos, Vector3 viewVector)
         {
             //Get the screen depth and camera ray
             Vector3 rayOrigin = worldToPlanetTRS.MultiplyPoint(cameraPos);
-            Vector3 rayDir = Vector3.Normalize(worldToPlanetTRS.MultiplyVector(viewVector));
+            Vector3 rayDir = Vector3.Normalize(worldToPlanetTRS.MultiplyVector(viewVector/ depthToPlanetS));
 
             //Intersect the ray to the atmosphere
-            Vector2 hitInfo = raySphere(atmosphereRadius, rayOrigin, rayDir);
+            Vector2 hitInfo = raySphere(atmosphereRadius, Vector3.Dot(rayOrigin, rayOrigin), Vector3.Dot(rayDir, rayOrigin));
             float dstToAtmosphere = hitInfo.x;
             float dstThroughAtmosphere = hitInfo.y;
 
-            raymarch(rayOrigin + rayDir * dstToAtmosphere, rayDir, dstThroughAtmosphere, out transmittance, out light);
+            return raymarch(color, rayOrigin + rayDir * dstToAtmosphere, rayDir, dstThroughAtmosphere);
         }
 
     }

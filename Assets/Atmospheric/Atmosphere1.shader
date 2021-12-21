@@ -43,24 +43,34 @@
             //Planet Geometry
             float4x4 worldToPlanetTRS;
             float depthToPlanetS;
-            float zeroHeightRadius;
+            float planetRadius;
             float atmosphereRadius;
 
             //Sun Light
-            float3 dirToLight;
-            float3 lightColor;
+            float3 dirToSunlight;
+            float3 sunlightColor;
+                //Can also supports Moon
 
             //Atmosphere
-            float atmosphereDensityScaleHeight;
-            float3 atmosphereAbsorption;
-            float3 atmosphereEmission;
-            float3 atmosphereRayleighInscattering;
-            float3 atmosphereMieInscattering;
-            float3 atmosphereMieCoeff;
+            float3 atmosphereRayleighScattering;
+            float3 atmosphereRayleighAbsorption;
+            float3 atmosphereRayleighPhaseCoeff;
+            float atmosphereRayleighScaleHeight;
 
-            //LightMarch Parameters
-            int numInScatteringPoints;
-            int numOpticalDepthPoints;
+            float3 atmosphereMieScattering;
+            float3 atmosphereMieAbsorption;
+            float3 atmosphereMiePhaseCoeff;
+            float atmosphereMieScaleHeight;
+
+            float3 atmosphereOzoneAbsorption;
+            float atmosphereOzoneMinRadius;
+            float atmosphereOzoneMaxRadius;
+
+            //LightMarch
+            float fixedStepLength;
+            int fixedStepNum;
+            int totalStepNum;
+            //int numInScatteringPoints;
 
             //PostProcessing
             float toneMappingExposure;
@@ -69,15 +79,14 @@
 
             sampler2D _MainTex,_CameraDepthTexture;
 
-            float miePhase(float cosTh, float3 mieCoeff){
-                return clamp(mieCoeff.x*pow(mieCoeff.y-mieCoeff.z*cosTh,-1.5),0,100);
-            }      
-            //float rayleighPhase(float cosTh){
-            //    return .75*(1+cosTh*cosTh);
-            //}       
-            float rayleighPhaseModded(float cosTh){
-                return 1.12+.4*cosTh;
+      
+            //(3/4,0,3/4)/(4pi) rayleigh, or (1.12,.4,0)/(4pi) modded
+            float rayleighPhaseFunction(float cosTh, float3 rayleighPhaseCoeff){
+                return rayleighPhaseCoeff.x+cosTh*(rayleighPhaseCoeff.y+cosTh*(rayleighPhaseCoeff.z));
             }    
+            float miePhaseFunction(float cosTh, float3 miePhaseCoeff){
+                return clamp(miePhaseCoeff.x*pow(miePhaseCoeff.y-miePhaseCoeff.z*cosTh,-1.5),0,100);
+            }
 
             float chapman(float x,float cosChi){
                 //http://www.thetenthplanet.de/archives/4519
@@ -90,12 +99,12 @@
                 }
             }
 
-            
-            float2 raySphere(float sphereRadius, float3 rayOrigin, float3 rayDir){
-                //returns dstToSphere,dstThroughSphere
-                //dir is normalzied
-                float b=2*dot(rayOrigin,rayDir);
-                float c=dot(rayOrigin,rayOrigin)-sphereRadius*sphereRadius;
+            float2 raySphere(float R, float rSquare, float rCosChi){
+                //R: planet radius
+                //r: dist to planet center
+                //cosChi: angle between ray and local zenith
+                float b=2*rCosChi;
+                float c=rSquare-R*R;
                 float d=b*b-4*c;
                 if(d>0){
                     float s=sqrt(d);
@@ -106,54 +115,74 @@
                 return float2(0,0);
             }
 
-            
-            float getDensity(float3 pos){
-                float height= max(length(pos)-zeroHeightRadius,0);
-                return exp(-height/atmosphereDensityScaleHeight);
-            }
 
-            float getOpticalDepth(float3 rayOrigin, float3 rayDir, float rayLength){
+            struct Atmosphere_Output{
+                float3 scattering;
+                float3 absorption;
+                float3 inscatteringLightDepth;
+            };
+
+            Atmosphere_Output atmosphereStep(float r,float h, float cosChi, float rayleighPhaseStrength, float miePhaseStrength){
+
+                //cosChi: angle between dirToLight and local zenith
+
+                Atmosphere_Output output;
+
+
+                float rayleighExp=exp(-h/atmosphereRayleighScaleHeight);
+                float mieExp=exp(-h/atmosphereMieScaleHeight);
+                float ozoneExistence=step(atmosphereOzoneMinRadius,r)-step(atmosphereOzoneMaxRadius,r);
                 
-                float r=length(rayOrigin);
-                float cosChi=dot(rayDir,rayOrigin)/r;
-                return atmosphereDensityScaleHeight*exp((zeroHeightRadius-r)/atmosphereDensityScaleHeight)*chapman(r/atmosphereDensityScaleHeight,cosChi);
+                //absorption at this point
+                output.absorption=rayleighExp*atmosphereRayleighAbsorption+mieExp*atmosphereMieAbsorption+ozoneExistence*atmosphereOzoneAbsorption;
 
+                //get the depth of inscattering lights
+                output.inscatteringLightDepth=
+                     atmosphereRayleighAbsorption       *rayleighExp*atmosphereRayleighScaleHeight*chapman(r/atmosphereRayleighScaleHeight,cosChi)
+                    +atmosphereMieAbsorption            *mieExp*atmosphereMieScaleHeight*chapman(r/atmosphereMieScaleHeight,cosChi)
+                    +atmosphereOzoneAbsorption          *(raySphere(atmosphereOzoneMaxRadius,r*r,r*cosChi).y-raySphere(atmosphereOzoneMinRadius,r*r,r*cosChi).y);
+                    
+                output.scattering=
+                     rayleighExp*atmosphereRayleighScattering*rayleighPhaseStrength
+                    +mieExp*atmosphereMieScattering*miePhaseStrength;
 
-                float step=rayLength/numOpticalDepthPoints;
-                float3 pos=rayOrigin+rayDir*(step*.5);
-                float opticalDepth=0;
-                for(int i=0;i<numOpticalDepthPoints;++i){
-                    opticalDepth+=getDensity(pos)*step;
-                    pos+=rayDir*step;
-                }
-                return opticalDepth;
+                return output;
             }
 
-            float3 raymarch( float3 color, float3 rayOrigin, float3 rayDir, float rayLength){
+            float3 raymarch(float3 color, float3 rayOrigin, float3 rayDir, float rayLength){
+
+                float3 totalDepth=0;
+                float3 scatteredLight=0;
+
+                float cosTh=dot(rayDir,dirToSunlight);
+                float rayleighPhaseStrength=rayleighPhaseFunction(cosTh,atmosphereRayleighPhaseCoeff);
+                float miePhaseStrength=miePhaseFunction(cosTh,atmosphereMiePhaseCoeff);
+
+                float step=min(fixedStepLength,rayLength/totalStepNum);
+                float longStep=(rayLength-step*fixedStepNum)/(totalStepNum-fixedStepNum);
+
                 float dst=0;
-                float3 light=0;
-                float3 transmittance=float3(1,1,1);
-                
-                float cosTh=dot(rayDir,dirToLight);
-                float3 atmosphereInscatteringLight=lightColor*
-                                                 (atmosphereRayleighInscattering*rayleighPhaseModded(cosTh)
-                                                 +atmosphereMieInscattering*miePhase(cosTh,atmosphereMieCoeff));
-                float step=rayLength/numInScatteringPoints;
-                dst=step/2;
-                for(int i=0;i<numInScatteringPoints;++i){
-                    float3 pos=rayOrigin+rayDir*dst;
-                    float atmosphereStepDensity=getDensity(pos)*step;
+                for(int i=0;i<totalStepNum;++i){
+                    if(i>=fixedStepNum)
+                        step=longStep;
 
-                    transmittance*=exp(-atmosphereStepDensity*atmosphereAbsorption);
+                    dst+=.5*step;
 
-                    float2 hitInfo=raySphere(atmosphereRadius,pos,dirToLight);
-                    float inscatteringAtmosphereDepth=getOpticalDepth(pos, dirToLight, hitInfo.y);
-                    //Todo Sphere Shadow
-                    light+=(atmosphereEmission+atmosphereInscatteringLight*exp(-inscatteringAtmosphereDepth*atmosphereAbsorption))*atmosphereStepDensity*transmittance;
-                    dst+=step;
+                    float3 scatterPos=rayOrigin+rayDir*dst;
+
+                    float r=length(scatterPos);
+                    float h=r-planetRadius;
+                    float cosChi=dot(scatterPos,dirToSunlight)/r;
+
+                    Atmosphere_Output output1=atmosphereStep(r,h,cosChi,rayleighPhaseStrength,miePhaseStrength);
+                    
+                    totalDepth+=.5*step*output1.absorption;
+                    scatteredLight+=step*sunlightColor*output1.scattering*exp(-(totalDepth+output1.inscatteringLightDepth));
+                    totalDepth+=.5*step*output1.absorption;
+
+                    dst+=.5*step;
                 }
-
-                return color*transmittance+light;
+                return color*exp(-totalDepth)+scatteredLight;
             }
 
             
@@ -161,61 +190,34 @@
             {
                 //Get the screen depth and camera ray
                 float nonlinearDepth= SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, input.uv);
-
                 bool hasDepth; if(UNITY_REVERSED_Z) hasDepth=nonlinearDepth>0;else hasDepth=nonlinearDepth<1;
                 float depth; if(hasDepth)depth=LinearEyeDepth(nonlinearDepth)*length(input.viewVector)*depthToPlanetS; else depth=1e38;
                 float3 rayOrigin=mul(worldToPlanetTRS,float4(_WorldSpaceCameraPos,1));
-                float3 rayDir=normalize(mul(worldToPlanetTRS,input.viewVector));
+                float3 rayDir=normalize(mul(worldToPlanetTRS,input.viewVector*depthToPlanetS));
 
                 //Intersect the ray to the atmosphere
-                float2 hitInfo=raySphere( atmosphereRadius ,rayOrigin,rayDir);
+                float2 hitInfo=raySphere(atmosphereRadius ,dot(rayOrigin,rayOrigin),dot(rayDir,rayOrigin));
                 float dstToAtmosphere=hitInfo.x;
                 float dstThroughAtmosphere=min(hitInfo.y,depth-hitInfo.x);
 
-                float3 col=tex2D(_MainTex,input.uv);
+                //Get the screen color, convert to Spectral color space
+                float3 color=tex2D(_MainTex,input.uv);
+                color=mul(RGB2spectralColor,color); //The spectral color space is not the rgb color space
 
-                
-                //The spectral color space is not the rgb color space
-                col=mul(RGB2spectralColor,col);
+                //Raymarch
                 if(dstThroughAtmosphere>0)
-                    col=raymarch(col, rayOrigin+rayDir*dstToAtmosphere,rayDir,dstThroughAtmosphere);
-                col=mul(spectralColor2RGB,col);
+                    color=raymarch(color, rayOrigin+rayDir*dstToAtmosphere,rayDir,dstThroughAtmosphere);
                 
-                //HDR mapping, which is very important for realitistic picture
-                //Do the HDR mapping in the spectral color space
+                //Tonemapping HDR to LDR
                 if(toneMappingExposure>0)
-                    col.xyz=1-exp(-toneMappingExposure*col.xyz);
+                    color.xyz=1-exp(-toneMappingExposure*color.xyz);
 
-                return col;
+                //Convert to RGB color space
+                color=mul(spectralColor2RGB,color);
+
+                return color;
             }
             ENDCG
         }
     }
 }
-            /*
-            float3 raymarch( float3 color, float3 rayOrigin, float3 rayDir, float rayLength){
-                float step=rayLength/numInScatteringPoints;
-                float3 pos=rayOrigin+rayDir*(rayLength-step*.5);
-
-                float cosTh=dot(rayDir,sunlightDir);
-                float3 outScattering=rayleighScattering+mieScattering;
-                float3 inScattering=sunlight*rayleighScattering*rayleighPhaseFunction(cosTh);
-                if(mieScattering>0)
-                    inScattering+=mieScattering*miePhaseFunction(cosTh);
-
-                for(int i=0;i<numInScatteringPoints;++i){
-                    float deltaDepth=getDensity(pos)*step;
-
-                    color= lerp(ambientLight,color,exp(-deltaDepth*outScattering));
-
-                    //if(raySphere(planetRadius,pos-planetCenter,dirToSun).y<planetRadius*.05){
-                    float sunRayLength=raySphere(planetRadius+atmosphereHeight,pos-planetCenter,-sunlightDir).y;
-                    float sunRayOpticalDepth=getOpticalDepth(pos, -sunlightDir, sunRayLength);
-                    color+=exp(-(sunRayOpticalDepth+deltaDepth/2)*outScattering)*inScattering*deltaDepth;
-                    //}
-
-                    pos-=rayDir*step;
-                }
-                return color;
-            }
-            */

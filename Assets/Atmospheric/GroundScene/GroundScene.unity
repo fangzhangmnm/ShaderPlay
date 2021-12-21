@@ -20,9 +20,9 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.10673252, g: 0.19463344, b: 0.38337472, a: 1}
-  m_AmbientEquatorColor: {r: 0.36098206, g: 0.47046772, b: 0.7437678, a: 1}
-  m_AmbientGroundColor: {r: 0.06811796, g: 0.1054368, b: 0.1893892, a: 0.4}
+  m_AmbientSkyColor: {r: 0.07263069, g: 0.15232049, b: 0.33716533, a: 1}
+  m_AmbientEquatorColor: {r: 0.22142929, g: 0.41721678, b: 0.7262117, a: 1}
+  m_AmbientGroundColor: {r: 0.103097856, g: 0.19735081, b: 0.35791776, a: 0.6}
   m_AmbientIntensity: 1
   m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
@@ -201,8 +201,8 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 9743938}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.6, z: -10}
+  m_LocalRotation: {x: -0.0047058957, y: -0.9670285, z: -0.019543707, w: 0.25387374}
+  m_LocalPosition: {x: 0.042458773, y: 3.4013555, z: 7.5026054}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -222,36 +222,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   shader: {fileID: 4800000, guid: 65c8a6e7b0310104aad63e289363370c, type: 3}
-  mat: {fileID: 1710374049}
-  camera: {fileID: 9743940}
   planetRef: {fileID: 0}
   overridePlanetCenter: 1
   planetCenter: {x: 0, y: -6371000, z: 0}
   planetRotation: {x: 0, y: 0, z: 0, w: 1}
   planetRadius: 6371000
-  atmosphereMaxHeight: 27000
-  scaleForNumericalStability: 10000
+  atmosphereMaxHeight: 60000
+  scaleForNumericalStability: 100000
   sceneScaleMultiplier: 1
   light: {fileID: 1518882476}
   lightTemperature: 6500
-  lightIntensity: 1.5
+  lightIntensity: 1.2
   overrideLightColorFromTemperature: 1
-  lightColor: {r: 1.5, g: 1.4947653, b: 1.4708349, a: 1.5}
-  lightColorLDRBoost: 1.1162766
-  atmosphereDensityFalloffHeight: 9000
+  lightColor: {r: 1.2, g: 1.1958123, b: 1.1766679, a: 1.2}
   atmosphereDensity: 1.224
-  atmosphereScatteringMultiplier: 0.000020298203
-  overrideAtmosphereAbsorption: 1
-  atmosphereAbsorption: {r: 0.47859856, g: 0.80069405, b: 1.0932982, a: 3}
-  atmosphereExtinsion: {r: 0.082478404, g: 0.235125, b: 0.011079188, a: 1}
-  atmosphereEmission: {r: 0, g: 0, b: 0, a: 1}
-  wavelengths: {x: 598, y: 524, z: 445}
-  overrideAtmosphereRayleighInscattering: 1
-  atmosphereRayleighInscattering: {r: 0.29612017, g: 0.46556905, b: 0.98221904, a: 1}
-  atmosphereMieInscattering: {r: 0.1, g: 0.1, b: 0.1, a: 1}
-  atmosphereMiePhase: 0.85
-  numInScatteringPoints: 10
-  numOpticalDepthPoints: 10
+  atmosphereScatteringMultiplier: 0.0000081699345
+  atmosphereRayleighScattering: {r: 0.5802, g: 1.3558, b: 3.31, a: 1}
+  atmosphereRayleighAbsorption: {r: 0.5802, g: 1.3558, b: 3.31, a: 1}
+  atmosphereRayleighPhaseCoeff: {x: 0.089126766, y: 0.03183099, z: 0}
+  atmosphereRayleighScaleHeight: 8000
+  atmosphereMieMultiplier: 1
+  atmosphereMieScattering: {r: 0.3996, g: 0.3996, b: 0.3996, a: 1}
+  atmosphereMieAbsorption: {r: 0.44, g: 0.44, b: 0.44, a: 1}
+  atmosphereMieG: 0.8
+  atmosphereMieScaleHeight: 1200
+  atmosphereOzoneAbsorption: {r: 0.065, g: 0.1881, b: 0.0085, a: 1}
+  atmosphereOzoneMinHeight: 10000
+  atmosphereOzoneMaxHeight: 40000
+  fixedStepLength: 1000
+  fixedStepNum: 5
+  totalStepNum: 10
+  SkyLightMultiplier: 4
   useToneMapping: 1
   toneMappingLogExposure: 0
   useColorSpace: 1
@@ -289,12 +290,13 @@ MonoBehaviour:
     e31: 0
     e32: 0
     e33: 1
-  updateSceneLights: 1
-  ambientSkyColorMultiplier: 1
-  ambientEquatorRaySlope: 0.1
-  ambientEquatorColorMultiplier: 1
-  adjustLDRExposure: 1
-  debug_text: (0.76, 1.29, 2.48)
+  updateSceneLights: 0
+  sceneLightMultiplier: 1
+  sceneLightDirectionalLightColorMultiplier: 1
+  sceneLightAmbientSkyColorMultiplier: 1
+  sceneLightAmbientEquatorColorMultiplier: 1
+  sceneLightAmbientEquatorRaySlope: 0.1
+  debug_text: 
 --- !u!1 &308798242
 GameObject:
   m_ObjectHideFlags: 0
@@ -385,14 +387,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 308798242}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0.008723834, y: 0.000004101334, z: -0.00026220645, w: 0.9999619}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 100000, y: 100000, z: 100000}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 3
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -1, y: 0.001, z: -0.03}
 --- !u!1 &359454900
 GameObject:
   m_ObjectHideFlags: 0
@@ -445,7 +447,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 58077ebc9997d074595e0d3b80a011b0, type: 2}
+  - {fileID: 2100000, guid: 3774a612c1528ce4d979a2a359119999, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1240,8 +1242,8 @@ Light:
   serializedVersion: 10
   m_Type: 1
   m_Shape: 0
-  m_Color: {r: 1, g: 0.87057275, b: 0.7721691, a: 1}
-  m_Intensity: 1.5
+  m_Color: {r: 0.9349757, g: 0.927771, b: 1, a: 0.7751494}
+  m_Intensity: 1.2900739
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -1283,10 +1285,10 @@ Light:
   m_Lightmapping: 4
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
-  m_BounceIntensity: 1
+  m_BounceIntensity: 3
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 1.1e-44, y: 4.917e-42, z: 6e-44, w: 2.524355e-29}
+  m_BoundingSphereOverride: {x: 2.2e-44, y: 3.1594e-41, z: 6e-44, w: 2.524355e-29}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
@@ -1298,14 +1300,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1518882475}
-  m_LocalRotation: {x: -0.47249833, y: -0.33850425, z: 0.78816247, w: -0.2023862}
+  m_LocalRotation: {x: -0.71550167, y: -0.46218657, z: 0.39311698, w: -0.34626588}
   m_LocalPosition: {x: 0, y: 1.849, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
-  m_LocalEulerAnglesHint: {x: 133.544, y: -241.91501, z: -0.07098389}
+  m_LocalEulerAnglesHint: {x: 120.80701, y: 1468.258, z: 1030.552}
 --- !u!1 &1615499088
 GameObject:
   m_ObjectHideFlags: 0
@@ -1403,36 +1405,6 @@ Transform:
   m_Father: {fileID: 1086542858}
   m_RootOrder: -1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!21 &1710374049
-Material:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: Hidden/Atmosphere1
-  m_Shader: {fileID: 4800000, guid: 65c8a6e7b0310104aad63e289363370c, type: 3}
-  m_Parent: {fileID: 0}
-  m_ModifiedSerializedProperties: 0
-  m_ShaderKeywords: 
-  m_LightmapFlags: 4
-  m_EnableInstancingVariants: 0
-  m_DoubleSidedGI: 0
-  m_CustomRenderQueue: -1
-  stringTagMap: {}
-  disabledShaderPasses: []
-  m_LockedProperties: 
-  m_SavedProperties:
-    serializedVersion: 3
-    m_TexEnvs:
-    - _MainTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
-    m_Ints: []
-    m_Floats: []
-    m_Colors: []
-  m_BuildTextureStacks: []
 --- !u!1 &1728719050
 GameObject:
   m_ObjectHideFlags: 0
@@ -1485,7 +1457,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a29a5118f6f21a7428a60a3444d43735, type: 2}
+  - {fileID: 2100000, guid: 58077ebc9997d074595e0d3b80a011b0, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
