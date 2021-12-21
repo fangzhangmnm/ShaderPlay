@@ -51,7 +51,7 @@
             float3 lightColor;
 
             //Atmosphere
-            float atmosphereInvDensityFalloffHeight;
+            float atmosphereDensityScaleHeight;
             float3 atmosphereAbsorption;
             float3 atmosphereEmission;
             float3 atmosphereRayleighInscattering;
@@ -71,10 +71,25 @@
 
             float miePhase(float cosTh, float3 mieCoeff){
                 return clamp(mieCoeff.x*pow(mieCoeff.y-mieCoeff.z*cosTh,-1.5),0,100);
-            }           
-            float rayleighPhase(float cosTh){
-                return .75*(1+cosTh*cosTh);
+            }      
+            //float rayleighPhase(float cosTh){
+            //    return .75*(1+cosTh*cosTh);
+            //}       
+            float rayleighPhaseModded(float cosTh){
+                return 1.12+.4*cosTh;
+            }    
+
+            float chapman(float x,float cosChi){
+                //http://www.thetenthplanet.de/archives/4519
+                float c=sqrt(1.57079632679*x);
+                if(cosChi>=0)
+                    return c/((c-1)*cosChi+1);
+                else{
+                    float sinChi=sqrt(saturate(1-cosChi*cosChi));
+                    return c/((c-1)*cosChi-1)+2*c*exp(x-x*sinChi)*sqrt(sinChi);
+                }
             }
+
             
             float2 raySphere(float sphereRadius, float3 rayOrigin, float3 rayDir){
                 //returns dstToSphere,dstThroughSphere
@@ -94,10 +109,16 @@
             
             float getDensity(float3 pos){
                 float height= max(length(pos)-zeroHeightRadius,0);
-                return exp(-height*atmosphereInvDensityFalloffHeight);
+                return exp(-height/atmosphereDensityScaleHeight);
             }
 
             float getOpticalDepth(float3 rayOrigin, float3 rayDir, float rayLength){
+                
+                float r=length(rayOrigin);
+                float cosChi=dot(rayDir,rayOrigin)/r;
+                return atmosphereDensityScaleHeight*exp((zeroHeightRadius-r)/atmosphereDensityScaleHeight)*chapman(r/atmosphereDensityScaleHeight,cosChi);
+
+
                 float step=rayLength/numOpticalDepthPoints;
                 float3 pos=rayOrigin+rayDir*(step*.5);
                 float opticalDepth=0;
@@ -115,7 +136,7 @@
                 
                 float cosTh=dot(rayDir,dirToLight);
                 float3 atmosphereInscatteringLight=lightColor*
-                                                 (atmosphereRayleighInscattering*rayleighPhase(cosTh)
+                                                 (atmosphereRayleighInscattering*rayleighPhaseModded(cosTh)
                                                  +atmosphereMieInscattering*miePhase(cosTh,atmosphereMieCoeff));
                 float step=rayLength/numInScatteringPoints;
                 dst=step/2;

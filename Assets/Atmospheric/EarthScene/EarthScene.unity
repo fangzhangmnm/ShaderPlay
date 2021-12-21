@@ -20,11 +20,11 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
-  m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
-  m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
+  m_AmbientSkyColor: {r: 0, g: 0, b: 0, a: 1}
+  m_AmbientEquatorColor: {r: 0, g: 0, b: 0, a: 1}
+  m_AmbientGroundColor: {r: 0, g: 0, b: 0, a: 0.4}
   m_AmbientIntensity: 1
-  m_AmbientMode: 0
+  m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
   m_SkyboxMaterial: {fileID: 2100000, guid: 4b9151ba07ec9f04082f18f001f01014, type: 2}
   m_HaloStrength: 0.5
@@ -326,11 +326,13 @@ MonoBehaviour:
   lightIntensity: 1
   overrideLightColorFromTemperature: 1
   lightColor: {r: 1, g: 0.9965102, b: 0.98055655, a: 1}
+  lightColorLDRBoost: 1.5000001
   atmosphereDensityFalloffHeight: 50000
   atmosphereDensity: 0.1
   atmosphereScatteringMultiplier: 0.000020298203
   overrideAtmosphereAbsorption: 1
-  atmosphereAbsorption: {r: 0.39612016, g: 0.56556904, b: 1.082219, a: 2}
+  atmosphereAbsorption: {r: 0.39612016, g: 0.56556904, b: 1.082219, a: 3}
+  atmosphereExtinsion: {r: 0, g: 0, b: 0, a: 1}
   atmosphereEmission: {r: 0, g: 0, b: 0, a: 1}
   wavelengths: {x: 598, y: 524, z: 445}
   overrideAtmosphereRayleighInscattering: 1
@@ -340,7 +342,7 @@ MonoBehaviour:
   numInScatteringPoints: 10
   numOpticalDepthPoints: 10
   useToneMapping: 1
-  toneMappingExposure: 2
+  toneMappingLogExposure: 0
   useColorSpace: 1
   spectralColor2RGBMatrix:
     e00: 1.6218
@@ -380,6 +382,7 @@ MonoBehaviour:
   ambientSkyColorMultiplier: 1
   ambientEquatorRaySlope: 0.5
   ambientEquatorColorMultiplier: 1
+  adjustLDRExposure: 0
   debug_text: RGBA(9199.338, 15604.010, 30000.000, 30000.000)
 --- !u!1 &1114633633
 GameObject:
@@ -471,7 +474,7 @@ Light:
   serializedVersion: 10
   m_Type: 1
   m_Shape: 0
-  m_Color: {r: 1, g: 0.9965102, b: 0.98055655, a: 1}
+  m_Color: {r: 1, g: 0.9965103, b: 0.98055667, a: 1}
   m_Intensity: 1.5
   m_Range: 10
   m_SpotAngle: 30
