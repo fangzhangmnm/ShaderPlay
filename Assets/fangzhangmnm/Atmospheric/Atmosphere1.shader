@@ -46,35 +46,43 @@
                 output.viewVector = mul(unity_CameraToWorld, float4(viewVector,0));
                 return output;
             }
+            //Planet Geometry
+            uniform float4x4 worldToPlanetTRS;
+            uniform float depthToPlanetS;
+            uniform float planetRadius;
+            uniform float atmosphereRadius;
+            //Sun
+            uniform float3 dirToSun;
+            uniform float3 sunColor;
+            uniform float4 sunDiscCoeff;
 
             //LightMarch
             uniform float fixedStepLength;
             uniform int fixedStepNum;
             uniform int totalStepNum;
-            //int numInScatteringPoints;
 
-            //PostProcessing
-            uniform float toneMappingExposure;
-            uniform float4x4 spectralColor2RGB;
-            uniform float4x4 RGB2spectralColor;
 
             UNITY_DECLARE_SCREENSPACE_TEXTURE(_MainTex);
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
 
 
             float3 raymarch(float3 color, float3 rayOrigin, float3 rayDir, float rayLength){
+                //Intersect the ray to the atmosphere
+                float rr=dot(rayOrigin,rayOrigin);
+                float rCosChi=dot(rayDir,rayOrigin);
 
+                float2 atmosphereHit=min(rayLength,raySphere(atmosphereRadius ,rr,rCosChi));
+                float dstThroughAtmosphere=atmosphereHit.y-atmosphereHit.x;
+                if(dstThroughAtmosphere<=0)return color;
+
+                float2 atmospherePhaseStrength=getAtmospherePhaseStrength(dot(rayDir,dirToSun));
                 float3 totalDepth=0;
                 float3 scatteredLight=0;
 
-                float cosTh=dot(rayDir,dirToSun);
-                float rayleighPhaseStrength=rayleighPhaseFunction(cosTh,atmosphere_rayleighPhaseCoeff);
-                float miePhaseStrength=miePhaseFunction(cosTh,atmosphere_miePhaseCoeff);
+                float step=min(fixedStepLength,dstThroughAtmosphere/totalStepNum);
+                float longStep=(dstThroughAtmosphere-step*fixedStepNum)/(totalStepNum-fixedStepNum);
 
-                float step=min(fixedStepLength,rayLength/totalStepNum);
-                float longStep=(rayLength-step*fixedStepNum)/(totalStepNum-fixedStepNum);
-
-                float dst=0;
+                float dst=atmosphereHit.x;
                 for(int i=0;i<totalStepNum;++i){
                     if(i>=fixedStepNum)
                         step=longStep;
@@ -83,11 +91,9 @@
 
                     float3 scatterPos=rayOrigin+rayDir*dst;
 
-                    float r=length(scatterPos);
-                    float h=r-planetRadius;
-                    float cosChi=dot(scatterPos,dirToSun)/r;
+                    float r=length(scatterPos),h=r-planetRadius,cosChi=dot(scatterPos,dirToSun)/r;
 
-                    Atmosphere_Output output1=atmosphereStep(r,h,cosChi,rayleighPhaseStrength,miePhaseStrength);
+                    Atmosphere_Output output1=atmosphereStep(r,h,cosChi,atmospherePhaseStrength);
                     
                     totalDepth+=.5*step*output1.absorption;
                     scatteredLight+=step*sunColor*output1.scattering*exp(-(totalDepth+output1.inscatteringLightDepth));
@@ -98,7 +104,6 @@
                 return color*exp(-totalDepth)+scatteredLight;
             }
             
-
             fixed3 frag (v2f input) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
@@ -110,22 +115,17 @@
                 float3 rayOrigin=mul(worldToPlanetTRS,float4(_WorldSpaceCameraPos,1));
                 float3 rayDir=normalize(mul(worldToPlanetTRS,input.viewVector*depthToPlanetS));
 
-                //Intersect the ray to the atmosphere
-                float2 atmosphereHit=raySphere(atmosphereRadius ,dot(rayOrigin,rayOrigin),dot(rayDir,rayOrigin));
-                float dstToAtmosphere=atmosphereHit.x;
-                float dstThroughAtmosphere=min(atmosphereHit.y,depth-atmosphereHit.x);
-
                 //Get the screen color, convert to Spectral color space
                 float3 color=UNITY_SAMPLE_SCREENSPACE_TEXTURE(_MainTex,input.uv);
                 color=mul(RGB2spectralColor,color); //The spectral color space is not the rgb color space
 
                 //Draw the sun disc
+                float cosTh=dot(rayDir,dirToSun);
                 if(!hasDepth)
-                    color+=sunColor*sunDisc(dot(rayDir,dirToSun),sunDiscCoeff);
+                    color+=sunColor*sunDisc(cosTh,sunDiscCoeff);
 
                 //Raymarch
-                if(dstThroughAtmosphere>0)
-                    color=raymarch(color, rayOrigin+rayDir*dstToAtmosphere,rayDir,dstThroughAtmosphere);
+                color=raymarch(color, rayOrigin,rayDir,depth);
                 
                 //Tonemapping HDR to LDR
                 if(toneMappingExposure>0)

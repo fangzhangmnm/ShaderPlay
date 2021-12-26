@@ -1,4 +1,4 @@
-﻿Shader "Hidden/Cloud1"
+﻿Shader "Hidden/Cloud2"
 {
     Properties
     {
@@ -16,24 +16,30 @@
             #pragma fragment frag
 
             #include "UnityCG.cginc"
+            #include "Atmosphere.cginc"
 
             struct appdata
             {
                 float4 vertex : POSITION;
                 float2 uv : TEXCOORD0;
+                UNITY_VERTEX_INPUT_INSTANCE_ID 
             };
-
 
             struct v2f
             {
                 float4 pos : SV_POSITION;
                 float2 uv : TEXCOORD0;
                 float3 viewVector : TEXCOORD1;
+                UNITY_VERTEX_OUTPUT_STEREO 
             };
 
             v2f vert (appdata v)
             {
                 v2f output;
+                UNITY_SETUP_INSTANCE_ID(v); 
+                UNITY_INITIALIZE_OUTPUT(v2f, output); 
+                UNITY_INITIALIZE_VERTEX_OUTPUT_STEREO(output); 
+
                 output.pos = UnityObjectToClipPos(v.vertex);
                 output.uv = v.uv;
                 float3 viewVector = mul(unity_CameraInvProjection, float4(v.uv * 2 - 1, 0, -1));
@@ -42,207 +48,261 @@
             }
             
             //Planet Geometry
-            float4x4 worldToPlanetTRS;
-            float worldToPlanetS;
-            float planetRadius;
-            float cloudMinRadius;
-            float cloudDeltaRadius;
-            float atmosphereRadius;
+            uniform float4x4 worldToPlanetTRS;
+            uniform float depthToPlanetS;
+            uniform float planetRadius;
+            uniform float cloudMaxHeight;
+            uniform float atmosphereRadius;
+            //Sun
+            uniform float3 dirToSun;
+            uniform float3 sunColor;
+            uniform float4 sunDiscCoeff;
+
+            //Weather Map
+            uniform Texture2D WeatherMap;
+            uniform SamplerState samplerWeatherMap;
+            uniform float weatherMapScale;
+            uniform float2 weatherMapOffset;
             
-            //Cloud Volume Textures
-            Texture3D<float4> NoiseTexture,DetailNoiseTexture;
-            SamplerState samplerNoiseTexture,samplerDetailNoiseTexture;
-
-            //Lighting
-            float3 lightColor;
-            float3 ambientColorUpper,ambientColorLower;
-
             //Cloud Shape
-            float cloudScale, detailScale;
-            float3 cloudPositionOffset, detailPositionOffset;
-            float densityOffset;
-            float detailStrength;
-            float cloudType;
+            uniform Texture3D CloudNoiseTexture,CloudErosionTexture;
+            uniform SamplerState samplerCloudNoiseTexture,samplerCloudErosionTexture;
+            uniform float cloudNoiseScale, cloudErosionScale;
+            uniform float3 cloudNoisePositionOffset, cloudErosionPositionOffset;
+            uniform float cloudErosionStrength;
+            //
+            uniform float cloudCoverage,cloudLowerHeight,cloudUpperHeight,cloudType;
             
             //Cloud Scattering
-            float3 cloudAbsorption,cloudInscattering;
-            float3 cloudMieCoeff;
-            float cloudPowderCoeff;
+            uniform float3 cloudAbsorption,cloudInscattering;
+            uniform float3 cloudMieCoeff;
+            uniform float3 cloudExtinction;
 
-            //Atmosphere Scattering
-            float3 atmosphereAbsorption, atmosphereInscattering;
+            //LightMarch
+            uniform int atmosphereStepNum;
+            uniform int cloudStepNum;
+            uniform int cloudLightingStepNum;
+            uniform float cloudLightingStepQ;
+            uniform float cloudNoiseLodShift;
+            uniform float cloudErosionLodShift;
 
-            //LightMarch Parameters
-            float stepSize,lightStepSize,stepSizeDistCoeff,stepSizeDensityCoeff,minStepSizeMultiplier;
-            int maxInScatteringPoints;
-            int minInScatteringPoints;
-            int numStepsLight;
 
-            //PostProcessing
-            float toneMappingExposure;
+            UNITY_DECLARE_SCREENSPACE_TEXTURE(_MainTex);
+            UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
             
-            sampler2D _MainTex,_CameraDepthTexture;
-
-            float2 raySphere(float sphereRadius, float3 rayOrigin, float3 rayDir){
-                //returns dstToSphere,dstThroughSphere
-                //dir is normalzied
-                float b=2*dot(rayOrigin,rayDir);
-                float c=dot(rayOrigin,rayOrigin)-sphereRadius*sphereRadius;
-                float d=b*b-4*c;
-                if(d<=0)
-                    return float2(0,0);
-                else{
-                    float s=sqrt(d);
-                    float dstToSphereNear=max(0,(-b-s)/2);
-                    float dstToSphereFar=(-b+s)/2;
-                    if(dstToSphereFar>=0)return float2(dstToSphereNear, dstToSphereFar-dstToSphereNear);
-                }
-            }
-
-            float4 raySphereShell(float innerRadius, float outerRadius, float3 rayOrigin, float3 rayDir, float rayLength){
-                //only first cross
-                //returns start,end-start,gapStart-start,gatEnd-gapStart
-                //dir is normalzied
-                float b=2*dot(rayOrigin,rayDir);
-                float bb=b*b;
+            float3 raymarch_atm(float3 color, float3 rayOrigin, float3 rayDir, float rayLength){
+                //Intersect the ray to the atmosphere
                 float rr=dot(rayOrigin,rayOrigin);
+                float rCosChi=dot(rayDir,rayOrigin);
 
-                float d1=bb-4*(rr-outerRadius*outerRadius);
-                if(d1<=0)
-                    return float4(0,0,0,0);
-                else{
-                    float s1=sqrt(d1);
-                    float x4c=min((-b+s1)/2,rayLength);
-                    if(x4c<0)
-                        return float4(0,0,0,0);
-                    else{
-                        float x1c=max(0,(-b-s1)/2);
-                        float d2=bb-4*(rr-innerRadius*innerRadius);
-                        if(d2<0)
-                            return float4(x1c,max(x4c-x1c,0),max(x4c-x1c,0),0);
-                        else{
-                            float s2=sqrt(d2);
-                            float x3c=min((-b+s2)/2,rayLength);
-                            if(x3c<0)
-                                return float4(0,x4c,x4c,0);
-                            else{
-                                float x2=(-b-s2)/2;
-                                if(x2<0)
-                                    return float4(x3c,max(x4c-x3c,0),max(x4c-x3c,0),0);
-                                else
-                                    return float4(x1c,max(x4c-x1c,0),x2-x1c,max(x3c-x2,0));
-                            }
-                        }
-                    }
+                float2 atmosphereHit=min(rayLength,raySphere(atmosphereRadius ,rr,rCosChi));
+                float dstThroughAtmosphere=atmosphereHit.y-atmosphereHit.x;
+                if(dstThroughAtmosphere<=0)return color;
+
+                float2 atmospherePhaseStrength=getAtmospherePhaseStrength(dot(rayDir,dirToSun));
+                float3 totalDepth=0;
+                float3 scatteredLight=0;
+
+                int nStep=atmosphereStepNum;
+                float step=dstThroughAtmosphere/nStep;
+
+                float dst=atmosphereHit.x;
+                for(int i=0;i<nStep;++i){
+
+                    dst+=.5*step;
+
+                    float3 scatterPos=rayOrigin+rayDir*dst;
+
+                    float r=length(scatterPos),h=r-planetRadius,cosChi=dot(scatterPos,dirToSun)/r;
+
+                    Atmosphere_Output output1=atmosphereStep(r,h,cosChi,atmospherePhaseStrength);
+                    
+                    totalDepth+=.5*step*output1.absorption;
+                    scatteredLight+=step*sunColor*output1.scattering*exp(-(totalDepth+output1.inscatteringLightDepth));
+                    totalDepth+=.5*step*output1.absorption;
+
+                    dst+=.5*step;
                 }
+                return color*exp(-totalDepth)+scatteredLight;
             }
+
+            //float2 xyz2LatLong(float3 v){
+            //    //Can be optimized
+            //    float r=length(v);
+            //    //(0,0) is bottom left, (1,1) is top right.
+            //    return float2(1.57079632679+arcsin(v.y/r),arctan2(v.z,v.x))/float2(3.14159265359,6.28318530718);
+            //}
             
+            float2 getCloudDensityLQ(float3 position, float log2Step){
+                // returns float2(0-1 density,sdf estimate)
+
+                float h=length(position)-planetRadius;
+
+                float2 uv=(position.xz+weatherMapOffset)/weatherMapScale;
+                float4 weatherSample=WeatherMap.SampleLevel(samplerWeatherMap,uv,0);
 
 
-            float getDensity(float3 position){
-                float3 uvw=(position-cloudPositionOffset).xzy/cloudScale;
-                float2 noise=NoiseTexture.SampleLevel(samplerNoiseTexture,uvw,0)-.5;
-                //float height01=(position.y-BoundsMin.y)/(BoundsMax.y-BoundsMin.y);
-                float height01=(length(position)-cloudMinRadius)/cloudDeltaRadius;
-                float heightCoeff=4*height01*(1-height01)-.75+(height01-.5);
-                return lerp(noise.r,noise.g,cloudType)+densityOffset+heightCoeff;
+                float localCloudLowerHeight=weatherSample.g*cloudMaxHeight;
+                float localCloudDeltaHeight=weatherSample.b*cloudMaxHeight;
+                float localCloudCoverate=weatherSample.r;
+                float localCloudType=weatherSample.a;
+                //float coverage=cloudCoverage;
+                //float mH=cloudLowerHeight;
+                //float MH=cloudUpperHeight;
+
+                float height01=saturate((h-localCloudLowerHeight)/localCloudDeltaHeight);
+                float heightCoeff=6.5*height01*height01*(1-height01);
+
+                float cloudNoise;
+                float3 uvw=(position+cloudNoisePositionOffset).xyz/cloudNoiseScale;
+                float2 noiseSample=CloudNoiseTexture.SampleLevel(samplerCloudNoiseTexture,uvw,log2Step+cloudNoiseLodShift);
+                cloudNoise=lerp(noiseSample.r,noiseSample.g,localCloudType)-1;
+
+                
+                return float2(saturate(localCloudCoverate+cloudNoise)*heightCoeff,0);
             }
-            float getDensityDetail(float3 position){
-                float3 uvw=(position-detailPositionOffset).xzy/detailScale;
-                return -detailStrength*(NoiseTexture.SampleLevel(samplerNoiseTexture,uvw,0).r);
-            }
 
-            float3 getAmbient(float3 position){
-                //float height01=(position.y-BoundsMin.y)/(BoundsMax.y-BoundsMin.y);
-                float height01=(length(position)-cloudMinRadius)/cloudDeltaRadius;
-                return lerp(ambientColorLower,ambientColorUpper,height01);
-            }
+            float2 getCloudDensityHQ(float3 position, float log2Step){
+                float2 cloudInfo=getCloudDensityLQ(position,log2Step);
+                if(cloudInfo.x>0){
+                float h=length(position)-planetRadius;
 
-            float getMiePhase(float cosTh){
-                return cloudMieCoeff.x*pow(cloudMieCoeff.y-cloudMieCoeff.z*cosTh,-1.5);
-            }           
-            float getRayleighPhase(float cosTh){
-                return .75*(1+cosTh*cosTh);
-            }
-
-            float3 lightmarch(float3 position, int steps){
-                float3 dirToLight=_WorldSpaceLightPos0.xyz;
-                float dstInsideCloud=raySphereShell(cloudMinRadius,cloudMinRadius+cloudDeltaRadius,position,dirToLight,1e38).y;
-                float stepSize=min(dstInsideCloud/steps,lightStepSize);
-                float totalDensity=0;
-                totalDensity+=saturate(getDensity(position));
-                for(int i=0;i<steps;++i){
-                    position+=dirToLight*stepSize;
-                    totalDensity+=saturate(getDensity(position));
+                    float height01=saturate((h-cloudLowerHeight)/(cloudUpperHeight-cloudLowerHeight));
+                    
+                    float3 uvw=(position+cloudErosionPositionOffset).xyz/cloudErosionScale;
+                    float erosionSample=CloudErosionTexture.SampleLevel(samplerCloudErosionTexture,uvw,log2Step+cloudErosionLodShift).r;
+                    
+                    cloudInfo.x=saturate(cloudInfo.x-cloudErosionStrength*erosionSample*(1-height01));
                 }
-                float3 opticalPath=totalDensity*stepSize*cloudAbsorption;
-                return exp(-opticalPath)*(1-exp(-cloudPowderCoeff*opticalPath*opticalPath));
+                return cloudInfo;
             }
 
-            float3 raymarch(float3 color, float3 rayOrigin, float3 rayDir, float rayLength, float gapStart, float gapLength){
-                float dst=0;
+            float getCloudDepth(float3 rayOrigin, float3 rayDir){
+                
+                float rr=dot(rayOrigin,rayOrigin);
+                float rCosChi=dot(rayOrigin,rayDir);
+                float2 cloudHit=raySphere(planetRadius+cloudMaxHeight,rr,rCosChi);
+
+                float dstThroughCloud=min(cloudHit.y-cloudHit.x,6*cloudMaxHeight);
+
+                int nStep=cloudLightingStepNum;
+                float q=cloudLightingStepQ;
+                float step=dstThroughCloud/(pow(q,nStep)-1)*(q-1);//get better shadows for thinner clouds and lower sunlights
+
                 float totalDensity=0;
-                float3 light=0;
-                float3 transmittance=float3(1,1,1);
+                float dst=cloudHit.x;
+                for(int i=0;i<nStep;++i){
 
-                float3 dirToLight=_WorldSpaceLightPos0.xyz;
-                float miePhase=getMiePhase(dot(rayDir,dirToLight));
+                    dst+=.5*step;
+                    totalDensity+=getCloudDensityLQ(rayOrigin+rayDir*dst,log2(step)).x*step;
+                    dst+=.5*step;
 
-                for(int i=0;i<maxInScatteringPoints;++i){
-                    if(dst>gapStart){dst+=gapLength;gapStart=1e38;}
-                    if(dst>rayLength)break;
+                    step*=q;
+                    //TODO early quit optimization
+                }
+                return totalDensity;
+            }
 
-                    float3 pos=rayOrigin+rayDir*dst;
-                    float density=getDensity(pos);
-                    //float step=min(stepSize*clamp(stepSizeDensityCoeff*abs(density),minStepSizeMultiplier,1)*clamp(dst/stepSize*stepSizeDistCoeff,1,10),(rayLength-gapLength)/minInScatteringPoints-.001f);
-                    float step=(rayLength-gapLength)/minInScatteringPoints;
-                    if(density>0)
-                        density+=getDensityDetail(pos);
-                    if(density>0){
 
-                        totalDensity+=density*step;
-                        transmittance=exp(-totalDensity*cloudAbsorption);
-                        light+=saturate(density)*step*cloudInscattering*transmittance*(miePhase*lightmarch(pos,numStepsLight-1)*lightColor+getAmbient(pos));
+
+            float3 raymarch(float3 color, float3 rayOrigin, float3 rayDir, float rayLength){
+                //Intersect the ray to the cloud layer
+                float rr=dot(rayOrigin,rayOrigin);
+                float rCosChi=dot(rayDir,rayOrigin);
+
+                float2 cloudHit=min(rayLength,raySphere(planetRadius+cloudMaxHeight,rr,rCosChi));
+                float cosTh=dot(rayDir,dirToSun);
+                float2 atmospherePhaseStrength=getAtmospherePhaseStrength(cosTh);
+                float cloudMiePhaseStrength=miePhaseFunction(cosTh,cloudMieCoeff);
+                
+                float3 totalDepth=0;
+                float3 scatteredLight=0;
+
+
+                float dstThroughAtmosphere=rayLength-cloudHit.y;
+                if(dstThroughAtmosphere>0)
+                    color=raymarch_atm(color,rayOrigin+rayDir*cloudHit.y,rayDir,dstThroughAtmosphere);
+                
+                int nStep=cloudStepNum;
+                float dstThroughCloud=min(cloudHit.y-cloudHit.x,nStep*cloudNoiseScale/8);
+
+                float dst=cloudHit.x;
+                float step=dstThroughCloud/nStep;
+                if(dstThroughCloud>0)
+                    for(int i=0;i<nStep;++i){
+                        dst+=.5*step;
+                        float3 scatterPos=rayOrigin+rayDir*dst;
+                        
+                        float r=length(scatterPos),h=r-planetRadius,cosChi=dot(scatterPos,dirToSun)/r;
+
+                        Atmosphere_Output output1=atmosphereStep(r,h,cosChi,atmospherePhaseStrength);
+                        
+                        float2 cloudInfo=getCloudDensityHQ(scatterPos,log2(step));
+                        float cloudDensity=cloudInfo.x;
+                        float sdf=cloudInfo.y;
+                        
+                        output1.absorption+=cloudDensity*cloudAbsorption;
+                        output1.scattering+=cloudDensity*cloudInscattering*cloudMiePhaseStrength;
+                        //for cloud shadow inside atmosphere, do not skip cloudDensity=0 case
+                        output1.inscatteringLightDepth+=getCloudDepth(scatterPos,dirToSun)*cloudAbsorption;
+
+                        //saturate(density)*step*cloudInscattering*transmittance*(miePhase*lightmarch(pos,numStepsLight-1)*lightColor+getAmbient(pos));
+                        totalDepth+=.5*step*output1.absorption;
+                        scatteredLight+=step*sunColor*output1.scattering*exp(-(totalDepth+output1.inscatteringLightDepth));
+                        totalDepth+=.5*step*output1.absorption;
+                        dst+=.5*step;
+
+                        //step=(dstThroughCloud-(dst-cloudHit.x))/(nStep-i-1);
+
                     }
-                    dst+=step;
-                }
-                color= color*transmittance+light;
+                    
+                //totalDepth=cloudAbsorption*(cloudHit.y-cloudHit.x+cloudHit.w-cloudHit.z);
+
+                color=color*exp(-totalDepth)+scatteredLight;
+
+                if(cloudHit.x>0)
+                    color=raymarch_atm(color,rayOrigin,rayDir,cloudHit.x);
+
                 return color;
             }
-
-
             
-            float3 toneMapping(float3 color){
-                //return 1-exp(-toneMappingExposure*color);
-                //float l=max(max(color.r,color.g),color.b);
-                float l=dot(float3(.2126,.7152,.0722),color);
-                return color/l*(1-exp(-toneMappingExposure*l));
-            }
-
-            fixed4 frag (v2f input) : SV_Target
+            
+            //Next: cloud height adjust
+            //Next: cloud should not be completely dark
+            //Next: global mapping shader variant
+            
+            
+            fixed3 frag (v2f input) : SV_Target
             {
-                fixed4 col = tex2D(_MainTex, input.uv);
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
-                float nonLinearDepth=SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture,input.uv);
-                bool hasDepth; if(UNITY_REVERSED_Z) hasDepth=nonLinearDepth>0;else hasDepth=nonLinearDepth<1;
-                float depth; if(hasDepth)depth=LinearEyeDepth(nonLinearDepth)*length(input.viewVector)*worldToPlanetS; else depth=1e38;
-
+                //Get the screen depth and camera ray
+                fixed nonlinearDepth= SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, input.uv);
+                bool hasDepth; if(UNITY_REVERSED_Z) hasDepth=nonlinearDepth>0;else hasDepth=nonlinearDepth<1;
+                float depth; if(hasDepth)depth=LinearEyeDepth(nonlinearDepth)*length(input.viewVector)*depthToPlanetS; else depth=1e38;
                 float3 rayOrigin=mul(worldToPlanetTRS,float4(_WorldSpaceCameraPos,1));
-                float3 rayDir=normalize(mul(worldToPlanetTRS,input.viewVector));
+                float3 rayDir=normalize(mul(worldToPlanetTRS,input.viewVector*depthToPlanetS));
 
-                float4 cloudHit=raySphereShell(cloudMinRadius,cloudMinRadius+cloudDeltaRadius,rayOrigin,rayDir,depth);
-                float dstToCloud=cloudHit.x;
-                float dstThroughCloud=cloudHit.y;
+                //Get the screen color, convert to Spectral color space
+                float3 color=UNITY_SAMPLE_SCREENSPACE_TEXTURE(_MainTex,input.uv);
+                color=mul(RGB2spectralColor,color); //The spectral color space is not the rgb color space
+
+                //Draw the sun disc
+                float cosTh=dot(rayDir,dirToSun);
+                if(!hasDepth)
+                    color+=sunColor*sunDisc(cosTh,sunDiscCoeff);
+
+                //Raymarch
+                color=raymarch(color, rayOrigin,rayDir,depth);
                 
-
-                if(dstThroughCloud>0)
-                    col.xyz=raymarch(col,rayOrigin+rayDir*dstToCloud,rayDir,dstThroughCloud,cloudHit.z,cloudHit.w);
-                    
-                //HRD mapping, which is very important for realitistic picture
+                //Tonemapping HDR to LDR
                 if(toneMappingExposure>0)
-                    col.xyz=toneMapping(col.xyz);
+                    color.xyz=1-exp(-toneMappingExposure*color.xyz);
 
-                return col;
+                //Convert to RGB color space
+                color=mul(spectralColor2RGB,color);
+
+                return color;
             }
             ENDCG
         }

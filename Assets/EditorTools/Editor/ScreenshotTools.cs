@@ -9,20 +9,26 @@ namespace fzmnm.EditorTools
         {
             GetWindow(typeof(ScreenshotTools)).Show();
         }
+        //int screenCaptureWidth = 1920;
+        //int screenCaptureHeight = 1080;
         int cubemapRes = 1024;
         int equirectangularWidth = 2048;
         int equirectangularHeight = 1024;
-        Camera cubemapCamera;
+
+        Camera camera;
         private void OnGUI()
         {
-            if (GUILayout.Button("Take Screenshot from Game View")) TakeScreenshot();
+            camera = (Camera)EditorGUILayout.ObjectField("Camera", camera, typeof(Camera), allowSceneObjects: true);
+
+            //screenCaptureWidth = EditorGUILayout.IntField("Screen Capture Width", screenCaptureWidth);
+            //screenCaptureHeight = EditorGUILayout.IntField("Screen Capture Height", screenCaptureHeight);
+            if (GUILayout.Button("Take Screenshot from Camera")) TakeScreenshot();
 
             EditorGUILayout.LabelField("", GUI.skin.horizontalSlider);
 
             cubemapRes = EditorGUILayout.IntField("Cubemap Resolution", cubemapRes);
             equirectangularWidth = EditorGUILayout.IntField("Equirectangular Width", equirectangularWidth);
             equirectangularHeight = EditorGUILayout.IntField("Equirectangular Height", equirectangularHeight);
-            cubemapCamera = (Camera)EditorGUILayout.ObjectField("Cubemap Camera", cubemapCamera, typeof(Camera), allowSceneObjects: true);
             if (GUILayout.Button("Take Cubemap PNG")) TakeCubemapPNG();
             if (GUILayout.Button("Take Cubemap EXR")) TakeCubemapEXR();
         }
@@ -30,7 +36,11 @@ namespace fzmnm.EditorTools
         {
             string filename = EditorUtility.SaveFilePanelInProject("Save Screenshot", "Screenshot", "png", "Save Screenshot");
             if (filename.Length == 0) return;
+
             ScreenCapture.CaptureScreenshot(filename);
+
+            //Texture2D tx = ScreenCapture.CaptureScreenshotAsTexture();
+            //System.IO.File.WriteAllBytes(filename, tx.EncodeToPNG());
             AssetDatabase.ImportAsset(filename);
         }
         void TakeCubemapPNG()
@@ -60,7 +70,7 @@ namespace fzmnm.EditorTools
 
             RenderTexture cm = new RenderTexture(cubemapRes, cubemapRes, depthBit);
             cm.dimension = UnityEngine.Rendering.TextureDimension.Cube;
-            cubemapCamera.RenderToCubemap(cm);
+            camera.RenderToCubemap(cm);
 
             RenderTexture eq = new RenderTexture(equirectangularWidth, equirectangularHeight, depthBit);
             cm.ConvertToEquirect(eq);

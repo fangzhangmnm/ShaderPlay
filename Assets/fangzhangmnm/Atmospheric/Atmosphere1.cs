@@ -22,7 +22,7 @@ namespace fzmnm
 
         [Header("Sun")]
         public new Light light;
-        [Range(500, 15000)] public float lightTemperature = 6500f;//in space
+        [Range(500, 15000)] public float lightTemperature = 5778f;//in space
         public float lightIntensity = 1.2f;
         public bool overrideLightColorFromTemperature = true;
         [ColorUsage(true, true)] public Color lightColor;
@@ -30,41 +30,14 @@ namespace fzmnm
         [Range(1, 10)] public float sunDiscConvergence = 5f;
 
         [Header("Atmosphere")]
-        public float atmosphereDensity = 1.224f;
-        public float atmosphereScatteringMultiplier = 1e-5f / 1.224f;
-
-        [ColorUsage(false, true)] public Color atmosphereRayleighScattering = new Color(.5802f, 1.3558f, 3.31f);
-        [ColorUsage(false, true)] public Color atmosphereRayleighAbsorption = new Color(.5802f, 1.3558f, 3.31f);
-        public Vector3 atmosphereRayleighPhaseCoeff = new Vector3(1.12f, .4f, 0f) / (4 * Mathf.PI);
-        public float atmosphereRayleighScaleHeight = 8000f;
-
-        public float atmosphereMieMultiplier = 1f;
-        [ColorUsage(false, true)] public Color atmosphereMieScattering = new Color(.3996f, .3996f, .3996f);
-        [ColorUsage(false, true)] public Color atmosphereMieAbsorption = new Color(.440f, .440f, .440f);
-        [Range(-0.99f, 0.99f)] public float atmosphereMieG = 0.8f;
-        public float atmosphereMieScaleHeight = 1200f;
-
-        [ColorUsage(false, true)] public Color atmosphereOzoneAbsorption = new Color(.0650f, .1881f, .0085f);
-        public float atmosphereOzoneMinHeight = 10000f;
-        public float atmosphereOzoneMaxHeight = 40000f;
+        public AtmosphereScatteringSetting atmosphereScatteringSetting=new AtmosphereScatteringSetting();
+        public float SkyLightMultiplier = 4f;
 
         [Header("LightMarch")]
         public float fixedStepLength = 1000f;
         public int fixedStepNum = 5;
         public int totalStepNum = 10;
 
-        [Header("PostProcessing")]
-        public float SkyLightMultiplier = 4f;
-        public bool useToneMapping = true;
-        [Range(-10, 10)] public float toneMappingLogExposure = 0;
-        //http://www.thetenthplanet.de/archives/4519
-        public bool useColorSpace = true;
-        public Matrix4x4 spectralColor2RGBMatrix = new Matrix4x4(
-            new Vector4(1.6218f, -0.0374f, -0.0283f, 0),
-            new Vector4(-0.4493f, 1.0598f, -0.1119f, 0),
-            new Vector4(0.0325f, -0.0742f, 1.0491f, 0),
-            new Vector4(0, 0, 0, 1));
-        public Matrix4x4 RGB2spectralColorMatrix;
 
         [Header("Update Scene Lights")]
         public bool updateSceneLights = false;
@@ -75,7 +48,7 @@ namespace fzmnm
         public float sceneLightAmbientEquatorRaySlope = .1f;
 
         [Multiline(10)] public string debug_text;
-        AtmosphericShaderEmulator emulator;
+        AtmosphereShaderEmulator emulator;
 
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
@@ -118,32 +91,14 @@ namespace fzmnm
             float g2 = sunDiscG * sunDiscG;
             mat.SetVector("sunDiscCoeff", new Vector4(3f / (8f * Mathf.PI) * (1 - g2) / (2 + g2), 1 + g2, 2 * sunDiscG, sunDiscConvergence));
 
-
             //Atmosphere
-            mat.SetVector("atmosphere_rayleighScattering", scale * atmosphereDensity * atmosphereScatteringMultiplier * RGB2SpectralColor(atmosphereRayleighScattering));
-            mat.SetVector("atmosphere_rayleighAbsorption", scale * atmosphereDensity * atmosphereScatteringMultiplier * RGB2SpectralColor(atmosphereRayleighAbsorption));
-            mat.SetVector("atmosphere_rayleighPhaseCoeff", atmosphereRayleighPhaseCoeff);
-            mat.SetFloat("atmosphere_rayleighScaleHeight", atmosphereRayleighScaleHeight / scale);
-
-            mat.SetVector("atmosphere_mieScattering", scale * atmosphereDensity * atmosphereScatteringMultiplier * atmosphereMieMultiplier * RGB2SpectralColor(atmosphereMieScattering));
-            mat.SetVector("atmosphere_mieAbsorption", scale * atmosphereDensity * atmosphereScatteringMultiplier * atmosphereMieMultiplier * RGB2SpectralColor(atmosphereMieAbsorption));
-            g2 = atmosphereMieG * atmosphereMieG;
-            mat.SetVector("atmosphere_miePhaseCoeff", new Vector3(3f / (8f * Mathf.PI) * (1 - g2) / (2 + g2), 1 + g2, 2 * atmosphereMieG));
-            mat.SetFloat("atmosphere_mieScaleHeight", atmosphereMieScaleHeight / scale);
-
-            mat.SetVector("atmosphere_ozoneAbsorption", scale * atmosphereDensity * atmosphereScatteringMultiplier * RGB2SpectralColor(atmosphereOzoneAbsorption));
-            mat.SetFloat("atmosphere_ozoneMinRadius", (atmosphereOzoneMinHeight + planetRadius) / scale);
-            mat.SetFloat("atmosphere_ozoneMaxRadius", (atmosphereOzoneMaxHeight + planetRadius) / scale);
+            atmosphereScatteringSetting.SetMaterial(mat,planetRadius:planetRadius,scale:scale);
 
             //LightMarch Parameters
             mat.SetFloat("fixedStepLength", fixedStepLength / scale);
             mat.SetInt("fixedStepNum", fixedStepNum);
             mat.SetInt("totalStepNum", totalStepNum);
 
-            //PostProcessing
-            mat.SetFloat("toneMappingExposure", useToneMapping ? Mathf.Exp(toneMappingLogExposure) : 0);
-            mat.SetMatrix("spectralColor2RGB", useColorSpace ? spectralColor2RGBMatrix : Matrix4x4.identity);
-            mat.SetMatrix("RGB2spectralColor", useColorSpace ? RGB2spectralColorMatrix : Matrix4x4.identity);
 
         }
 
@@ -160,7 +115,6 @@ namespace fzmnm
                 else
                     planetCenter = planetRef.position;
             }
-            RGB2spectralColorMatrix = Matrix4x4.Inverse(spectralColor2RGBMatrix);
             if (overrideLightColorFromTemperature) lightColor = Temperature2RGB(lightTemperature) * lightIntensity;
 
             fixedStepNum = Mathf.Min(fixedStepNum, totalStepNum);
@@ -173,7 +127,7 @@ namespace fzmnm
         {
             Debug.Assert(mat);
             if (!updateSceneLights) return;
-            if (emulator == null) emulator = new AtmosphericShaderEmulator();
+            if (emulator == null) emulator = new AtmosphereShaderEmulator();
             emulator.ReadMaterial(mat);
 
             emulator.includeMieInscattering = false;
@@ -202,22 +156,8 @@ namespace fzmnm
 
         }
 
-
-        Vector3 exp(Vector3 v) => new Vector3(Mathf.Exp(v.x), Mathf.Exp(v.y), Mathf.Exp(v.z));
-        Vector3 ToneMapping(Vector3 color) => useToneMapping ? Vector3.one - exp(-color * toneMappingLogExposure) : color;
-        Vector3 RGB2SpectralColor(Color color)
-        {
-            Vector3 v = new Vector3(color.r, color.g, color.b);
-            if (useColorSpace)
-                v = RGB2spectralColorMatrix.MultiplyVector(v);
-            return v;
-        }
-        Color SpectralColor2RGB(Vector3 color)
-        {
-            if (useColorSpace)
-                color = spectralColor2RGBMatrix.MultiplyVector(color);
-            return new Color(Mathf.Max(0, color.x), Mathf.Max(0, color.y), Mathf.Max(0, color.z), 1);
-        }
+        public Vector3 RGB2SpectralColor(Color color) => atmosphereScatteringSetting.RGB2SpectralColor(color);
+        public Color SpectralColor2RGB(Vector3 color) => atmosphereScatteringSetting.SpectralColor2RGB(color);
         Color Temperature2RGB(float temperature)
         {
             //https://tannerhelland.com/2012/09/18/convert-temperature-rgb-algorithm-code.html
@@ -242,9 +182,6 @@ namespace fzmnm
                     1);
         }
 
-
-
-        // C# emulation for shaders for light calculation
 
 
 
