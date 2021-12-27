@@ -20,9 +20,9 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0, g: 0, b: 0, a: 1}
-  m_AmbientEquatorColor: {r: 0, g: 0, b: 0, a: 1}
-  m_AmbientGroundColor: {r: 0, g: 0, b: 0, a: 0.4}
+  m_AmbientSkyColor: {r: 0.0036823805, g: 0.0114536155, b: 0.027551128, a: 1}
+  m_AmbientEquatorColor: {r: NaN, g: NaN, b: NaN, a: 1}
+  m_AmbientGroundColor: {r: NaN, g: NaN, b: NaN, a: 0.6}
   m_AmbientIntensity: 1
   m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.0010076107, g: 0.0017040377, b: 0.003447983, a: 1}
+  m_IndirectSpecularColor: {r: 0.0010078202, g: 0.0017043077, b: 0.0034486365, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -315,7 +315,7 @@ MonoBehaviour:
   planetRef: {fileID: 1665094636}
   overridePlanetCenter: 1
   planetCenter: {x: 0, y: 0, z: 0}
-  planetRotation: {x: 0, y: 0, z: 0, w: 1}
+  planetRotation: {x: -0, y: -0.65044564, z: -0, w: 0.75955284}
   planetRadius: 637100
   atmosphereMaxHeight: 60000
   autoScaleForNumericalStability: 0
@@ -394,7 +394,7 @@ MonoBehaviour:
   planetRotation: {x: -0, y: -0.65044564, z: -0, w: 0.75955284}
   planetRadius: 637100
   atmosphereMaxHeight: 60000
-  cloudSphereMaxHeight: 5000
+  cloudSphereMaxHeight: 7000
   autoScaleForNumericalStability: 1
   scaleForNumericalStability: 282934.62
   sceneScaleMultiplier: 6371
@@ -450,26 +450,31 @@ MonoBehaviour:
   cloudLowerHeight: 500
   cloudDeltaHeight: 1500
   cloudCoverage: 0.5
-  cloudNoiseTexture: {fileID: 11700000, guid: 97ce3664c3766c1498261da6fe0c11b3, type: 2}
-  cloudErosionTexture: {fileID: 11700000, guid: 8379d9c217bd40e4e8dfb7a5a30d8ec4,
+  cloudNoiseTexture: {fileID: 11700000, guid: eecc98e0390d42d43b38ef369b89850b, type: 2}
+  cloudErosionTexture: {fileID: 11700000, guid: eecc98e0390d42d43b38ef369b89850b,
     type: 2}
-  cloudNoiseScale: 30000
-  cloudErosionScaleDivisor: 5.7
+  cloudNoiseScale: 40000
+  cloudErosionScaleDivisor: 4.5
   cloudNoisePositionOffset: {x: 0, y: 0, z: 0}
   cloudErosionPositionOffset: {x: 0, y: 0, z: 0}
   cloudNoisePositionOffsetVelocity: {x: 0, y: 0, z: 0}
   cloudErosionOffsetVelocity: {x: 0, y: 0, z: 0}
-  cloudErosionStrength: 0.265
+  cloudErosionStrength: 0.482
   cloudDensity: 0.01
   cloudInscattering: {r: 1, g: 1, b: 1, a: 1}
   cloudAbsorption: {r: 0.3018868, g: 0.3018868, b: 0.3018868, a: 0.5}
   cloudMiePhase: 0.26
   atmosphereStepNum: 4
-  cloudStepNum: 128
-  cloudLightingStepNum: 6
+  cloudStepNum: 32
+  cloudStepQ: 1.5
+  cloudStepQuitDepth: 3
+  cloudNoiseSDFMultiplier: 0.5
+  cloudLightingStepNum: 1
+  cloudLightingLQStepNum: 2
   cloudLightingStepQ: 1.5
   cloudNoiseLodBias: 0
   cloudErosionLodBias: 0
+  CLOUD_DEBUG_SHOW_STEPS: 0
   updateSceneLights: 0
   sceneLightMultiplier: 1
   sceneLightDirectionalLightColorMultiplier: 1
@@ -537,8 +542,8 @@ Light:
   serializedVersion: 10
   m_Type: 1
   m_Shape: 0
-  m_Color: {r: 1, g: 0.9965103, b: 0.98055667, a: 1}
-  m_Intensity: 1.5
+  m_Color: {r: 1, g: 0.9516896, b: 0.9107403, a: 0.83279085}
+  m_Intensity: 1.2007817
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -583,7 +588,7 @@ Light:
   m_BounceIntensity: 1
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 8.4e-44, y: 1.5292e-41, z: 6e-44, w: 2.524355e-29}
+  m_BoundingSphereOverride: {x: 2.4e-44, y: 9.186e-42, z: 6e-44, w: 2.524355e-29}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0

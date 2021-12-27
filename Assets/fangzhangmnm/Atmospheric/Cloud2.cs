@@ -52,24 +52,30 @@ namespace fzmnm
         public Texture3D cloudNoiseTexture;
         public Texture3D cloudErosionTexture;
         public float cloudNoiseScale = 10000f;
-        public float cloudErosionScaleDivisor = 5.7f;
+        public float cloudErosionScaleDivisor = 23.3f;
         public Vector3 cloudNoisePositionOffset, cloudErosionPositionOffset;
         public Vector3 cloudNoisePositionOffsetVelocity, cloudErosionOffsetVelocity;
-        [Range(0, 1f)] public float cloudErosionStrength = .3f;
+        [Range(0, 1f)] public float cloudErosionStrength = .5f;
 
         [Header("Cloud Scattering")]
         public float cloudDensity = 0.01f;
         [ColorUsage(false, true)] public Color cloudInscattering = Color.white;
-        [ColorUsage(false, true)] public Color cloudAbsorption = Color.white;
+        [ColorUsage(false, true)] public Color cloudAbsorption = Color.white*.75f;
         [Range(-1f, 1f)] public float cloudMiePhase = .26f;
 
         [Header("LightMarch")]
         public int atmosphereStepNum = 8;
         public int cloudStepNum = 128;
+        public float cloudStepMaxDist = 50000f;
+        public float cloudStepQN = 15f;
+        public float cloudStepQuitDepth = 3;
+        public float cloudNoiseSDFMultiplier = .125f;
         public int cloudLightingStepNum = 6;
+        public int cloudLightingLQStepNum=2;
         public float cloudLightingStepQ = 1.5f;
-        public float cloudNoiseLodBias = 0;
-        public float cloudErosionLodBias = 0;
+        public float cloudNoiseLodBias = -1;
+        public float cloudErosionLodBias = -1;
+        public bool CLOUD_DEBUG_SHOW_STEPS = false;
 
 
         [Header("Update Scene Lights")]
@@ -163,13 +169,26 @@ namespace fzmnm
             //LightMarch Parameters
             mat.SetInt("atmosphereStepNum", atmosphereStepNum);
             mat.SetInt("cloudStepNum", cloudStepNum);
+            mat.SetFloat("cloudStepMaxDist", cloudStepMaxDist /scale);
+            mat.SetFloat("cloudStepQ", Mathf.Pow(cloudStepQN,1.0f/cloudStepNum));
+            mat.SetFloat("cloudStepQuitDepth", cloudStepQuitDepth);
+            mat.SetFloat("cloudNoiseSDFMultiplier", cloudNoiseSDFMultiplier);
             mat.SetInt("cloudLightingStepNum", cloudLightingStepNum);
+            mat.SetInt("cloudLightingLQStepNum", cloudLightingLQStepNum);
             mat.SetFloat("cloudLightingStepQ", cloudLightingStepQ);
             mat.SetFloat("cloudNoiseLodShift", Mathf.Log(cloudNoiseTexture.width / (cloudNoiseScale / scale), 2) + cloudNoiseLodBias);
             mat.SetFloat("cloudErosionLodShift", Mathf.Log(cloudErosionTexture.width / (cloudNoiseScale / cloudErosionScaleDivisor / scale), 2) + cloudErosionLodBias);
             mat.SetFloat("cloudErosionStrength", cloudErosionStrength);
         }
-
+        Vector2 SetGeometricSeries(float total, float qn, int n)
+        {
+            if (qn <= 1) return new Vector2(total / n, 1);
+            else
+            {
+                float q = Mathf.Pow(qn, 1.0f / n);
+                return new Vector2(total / (qn - 1) * (q - 1),q);
+            }
+        }
         private void UpdateParameters()
         {
 
@@ -193,6 +212,10 @@ namespace fzmnm
                     mat.EnableKeyword("WEATHERMAP_SPHERICAL");
                     break;
             }
+            if (CLOUD_DEBUG_SHOW_STEPS)
+                mat.EnableKeyword("CLOUD_DEBUG_SHOW_STEPS");
+            else
+                mat.DisableKeyword("CLOUD_DEBUG_SHOW_STEPS");
             camera = GetComponent<Camera>();
             camera.depthTextureMode = DepthTextureMode.Depth;
 

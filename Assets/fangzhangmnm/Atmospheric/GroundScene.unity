@@ -20,9 +20,9 @@ RenderSettings:
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.010856422, g: 0.033319037, b: 0.079504274, a: 1}
-  m_AmbientEquatorColor: {r: 0.036834396, g: 0.10720937, b: 0.24406831, a: 1}
-  m_AmbientGroundColor: {r: 0.016905043, g: 0.049547557, b: 0.113528185, a: 0.6}
+  m_AmbientSkyColor: {r: 0.008677905, g: 0.02653234, b: 0.063255034, a: 1}
+  m_AmbientEquatorColor: {r: NaN, g: NaN, b: NaN, a: 1}
+  m_AmbientGroundColor: {r: NaN, g: NaN, b: NaN, a: 0.6}
   m_AmbientIntensity: 1
   m_AmbientMode: 1
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
@@ -301,29 +301,35 @@ MonoBehaviour:
   weatherMapOffset: {x: 0, y: 0}
   cloudType: 0
   cloudLowerHeight: 500
-  cloudDeltaHeight: 2000
-  cloudCoverage: 0.52
+  cloudDeltaHeight: 1500
+  cloudCoverage: 0.5
   cloudNoiseTexture: {fileID: 11700000, guid: 97ce3664c3766c1498261da6fe0c11b3, type: 2}
-  cloudErosionTexture: {fileID: 11700000, guid: 8379d9c217bd40e4e8dfb7a5a30d8ec4,
+  cloudErosionTexture: {fileID: 11700000, guid: eecc98e0390d42d43b38ef369b89850b,
     type: 2}
   cloudNoiseScale: 10000
-  cloudErosionScaleDivisor: 5.7
+  cloudErosionScaleDivisor: 23.3
   cloudNoisePositionOffset: {x: 0, y: 0, z: 0}
   cloudErosionPositionOffset: {x: 0, y: 0, z: 0}
-  cloudNoisePositionOffsetVelocity: {x: 0, y: 0, z: 0}
-  cloudErosionOffsetVelocity: {x: 0, y: 0, z: 0}
-  cloudErosionStrength: 0.3
+  cloudNoisePositionOffsetVelocity: {x: 50, y: 0, z: 0}
+  cloudErosionOffsetVelocity: {x: 100, y: 0, z: 0}
+  cloudErosionStrength: 0.5
   cloudDensity: 0.01
   cloudInscattering: {r: 1, g: 1, b: 1, a: 1}
-  cloudAbsorption: {r: 1, g: 1, b: 1, a: 1}
+  cloudAbsorption: {r: 0.75, g: 0.75, b: 0.75, a: 1}
   cloudMiePhase: 0.26
   atmosphereStepNum: 8
   cloudStepNum: 128
+  cloudStepMaxDist: 50000
+  cloudStepQN: 15
+  cloudStepQuitDepth: 3
+  cloudNoiseSDFMultiplier: 0.125
   cloudLightingStepNum: 6
+  cloudLightingLQStepNum: 2
   cloudLightingStepQ: 1.5
-  cloudNoiseLodBias: 0
-  cloudErosionLodBias: 0
-  updateSceneLights: 0
+  cloudNoiseLodBias: -1
+  cloudErosionLodBias: -1
+  CLOUD_DEBUG_SHOW_STEPS: 0
+  updateSceneLights: 1
   sceneLightMultiplier: 1
   sceneLightDirectionalLightColorMultiplier: 1
   sceneLightAmbientSkyColorMultiplier: 1
@@ -1457,8 +1463,8 @@ Light:
   serializedVersion: 10
   m_Type: 1
   m_Shape: 0
-  m_Color: {r: 1, g: 0.951728, b: 0.92801154, a: 0.8321123}
-  m_Intensity: 1.2017609
+  m_Color: {r: 1, g: 0.95236063, b: 0.94727975, a: 0.83105254}
+  m_Intensity: 1.2032933
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -1503,7 +1509,7 @@ Light:
   m_BounceIntensity: 3
   m_ColorTemperature: 6570
   m_UseColorTemperature: 0
-  m_BoundingSphereOverride: {x: 1e-45, y: 4.025e-42, z: 6e-44, w: 2.524355e-29}
+  m_BoundingSphereOverride: {x: 8e-45, y: 1.1572e-41, z: 6e-44, w: 2.524355e-29}
   m_UseBoundingSphereOverride: 0
   m_UseViewFrustumForShadowCasterCull: 1
   m_ShadowRadius: 0
@@ -1515,14 +1521,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1518882475}
-  m_LocalRotation: {x: 0.2634284, y: -0.80456233, z: 0.29164565, w: 0.4452278}
+  m_LocalRotation: {x: 0.71457976, y: -0.29368997, z: -0.41841918, w: 0.47754306}
   m_LocalPosition: {x: 0, y: 14.8, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 135.262, y: 772.398, z: -553.365}
+  m_LocalEulerAnglesHint: {x: 154.106, y: 797.562, z: -654.38403}
 --- !u!1 &1615499088
 GameObject:
   m_ObjectHideFlags: 0

@@ -86,7 +86,7 @@ namespace fzmnm
             mat.SetFloat("atmosphereRadius", (atmosphereMaxHeight + planetRadius) / scale);
 
             //Sun Light
-            mat.SetVector("dirToSun", -light.transform.forward);
+            mat.SetVector("dirToSun", Quaternion.Inverse(planetRotation) * -light.transform.forward);
             mat.SetVector("sunColor", RGB2SpectralColor(lightColor * Mathf.PI * SkyLightMultiplier)); //should be pi instead of 4 pi. Why?
             float g2 = sunDiscG * sunDiscG;
             mat.SetVector("sunDiscCoeff", new Vector4(3f / (8f * Mathf.PI) * (1 - g2) / (2 + g2), 1 + g2, 2 * sunDiscG, sunDiscConvergence));
@@ -111,9 +111,15 @@ namespace fzmnm
             if (overridePlanetCenter)
             {
                 if (planetRef == null)
+                {
                     planetCenter = new Vector3(0, -planetRadius, 0);
+                    planetRotation = Quaternion.identity;
+                }
                 else
+                {
                     planetCenter = planetRef.position;
+                    planetRotation = planetRef.rotation;
+                }
             }
             if (overrideLightColorFromTemperature) lightColor = Temperature2RGB(lightTemperature) * lightIntensity;
 

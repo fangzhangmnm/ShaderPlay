@@ -10,7 +10,7 @@ MonoImporter:
   - weatherMap: {fileID: 2800000, guid: 876136511b6842441bc01c63a8b389e4, type: 3}
   - cloudNoiseTexture: {fileID: 11700000, guid: 97ce3664c3766c1498261da6fe0c11b3,
       type: 2}
-  - cloudErosionTexture: {fileID: 11700000, guid: 8379d9c217bd40e4e8dfb7a5a30d8ec4,
+  - cloudErosionTexture: {fileID: 11700000, guid: eecc98e0390d42d43b38ef369b89850b,
       type: 2}
   executionOrder: 0
   icon: {instanceID: 0}
