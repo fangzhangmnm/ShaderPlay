@@ -1,4 +1,6 @@
-﻿Shader "Hidden/Cloud2"
+﻿
+
+Shader "Hidden/Cloud2"
 {
     Properties
     {
@@ -14,6 +16,7 @@
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
+            #pragma multi_compile WEATHERMAP_UNIFORM WEATHERMAP_PLANAR WEATHERMAP_SPHERICAL
 
             #include "UnityCG.cginc"
             #include "Atmosphere.cginc"
@@ -57,12 +60,18 @@
             uniform float3 dirToSun;
             uniform float3 sunColor;
             uniform float4 sunDiscCoeff;
+            uniform float3 planetColor;
 
             //Weather Map
             uniform Texture2D WeatherMap;
             uniform SamplerState samplerWeatherMap;
-            uniform float weatherMapScale;
-            uniform float2 weatherMapOffset;
+            #if WEATHERMAP_PLANAR
+                uniform float weatherMapScale;
+                uniform float2 weatherMapOffset;
+            #endif
+            #if WEATHERMAP_UNIFORM
+                uniform float cloudType,cloudLowerHeight,cloudDeltaHeight,cloudCoverage;
+            #endif
             
             //Cloud Shape
             uniform Texture3D CloudNoiseTexture,CloudErosionTexture;
@@ -70,8 +79,6 @@
             uniform float cloudNoiseScale, cloudErosionScale;
             uniform float3 cloudNoisePositionOffset, cloudErosionPositionOffset;
             uniform float cloudErosionStrength;
-            //
-            uniform float cloudCoverage,cloudLowerHeight,cloudUpperHeight,cloudType;
             
             //Cloud Scattering
             uniform float3 cloudAbsorption,cloudInscattering;
@@ -126,30 +133,42 @@
                 return color*exp(-totalDepth)+scatteredLight;
             }
 
-            //float2 xyz2LatLong(float3 v){
-            //    //Can be optimized
-            //    float r=length(v);
-            //    //(0,0) is bottom left, (1,1) is top right.
-            //    return float2(1.57079632679+arcsin(v.y/r),arctan2(v.z,v.x))/float2(3.14159265359,6.28318530718);
-            //}
+            float2 xyz2LatLong(float3 v){
+                //Can be optimized
+                float r=length(v);
+                //(0,0) is bottom left, (1,1) is top right.
+                return float2(1.57079632679+asin(v.y/r),atan2(v.z,v.x))/float2(3.14159265359,6.28318530718);
+            }
+
+            float4 getWeather(float3 position){
+                // return type, lower height, delta height, coverage
+                float4 weather;
+                #if WEATHERMAP_UNIFORM
+                    weather= float4(cloudType,cloudLowerHeight,cloudDeltaHeight,cloudCoverage);
+                #elif WEATHERMAP_PLANAR
+                    float2 uv=(position.xz+weatherMapOffset)/weatherMapScale;
+                    weather= WeatherMap.SampleLevel(samplerWeatherMap,uv,0)*float4(1,cloudMaxHeight,cloudMaxHeight,1);
+                    //weather.z=min(cloudMaxHeight-weather.y,weather.z);
+                #elif WEATHERMAP_SPHERICAL
+                    weather= WeatherMap.SampleLevel(samplerWeatherMap,xyz2LatLong(position).yx,0)*float4(1,cloudMaxHeight,cloudMaxHeight,1);
+                    //weather.z=min(cloudMaxHeight-weather.y,weather.z);
+                #endif
+                return weather;
+            }
             
             float2 getCloudDensityLQ(float3 position, float log2Step){
-                // returns float2(0-1 density,sdf estimate)
+                // return.x 0-1 density
+                // return.y 0-1 height01
 
+                // TODO early quit optimization
+
+                float4 weatherSample=getWeather(position);
+                float localCloudType=weatherSample.r;
+                float localCloudLowerHeight=weatherSample.g;
+                float localCloudDeltaHeight=weatherSample.b;
+                float localCloudCoverage=weatherSample.a;
+                
                 float h=length(position)-planetRadius;
-
-                float2 uv=(position.xz+weatherMapOffset)/weatherMapScale;
-                float4 weatherSample=WeatherMap.SampleLevel(samplerWeatherMap,uv,0);
-
-
-                float localCloudLowerHeight=weatherSample.g*cloudMaxHeight;
-                float localCloudDeltaHeight=weatherSample.b*cloudMaxHeight;
-                float localCloudCoverate=weatherSample.r;
-                float localCloudType=weatherSample.a;
-                //float coverage=cloudCoverage;
-                //float mH=cloudLowerHeight;
-                //float MH=cloudUpperHeight;
-
                 float height01=saturate((h-localCloudLowerHeight)/localCloudDeltaHeight);
                 float heightCoeff=6.5*height01*height01*(1-height01);
 
@@ -159,20 +178,18 @@
                 cloudNoise=lerp(noiseSample.r,noiseSample.g,localCloudType)-1;
 
                 
-                return float2(saturate(localCloudCoverate+cloudNoise)*heightCoeff,0);
+                return float2(saturate(localCloudCoverage+cloudNoise)*heightCoeff,height01);
             }
 
             float2 getCloudDensityHQ(float3 position, float log2Step){
                 float2 cloudInfo=getCloudDensityLQ(position,log2Step);
                 if(cloudInfo.x>0){
                 float h=length(position)-planetRadius;
-
-                    float height01=saturate((h-cloudLowerHeight)/(cloudUpperHeight-cloudLowerHeight));
                     
                     float3 uvw=(position+cloudErosionPositionOffset).xyz/cloudErosionScale;
                     float erosionSample=CloudErosionTexture.SampleLevel(samplerCloudErosionTexture,uvw,log2Step+cloudErosionLodShift).r;
                     
-                    cloudInfo.x=saturate(cloudInfo.x-cloudErosionStrength*erosionSample*(1-height01));
+                    cloudInfo.x=saturate(cloudInfo.x-cloudErosionStrength*erosionSample*(1-cloudInfo.y));
                 }
                 return cloudInfo;
             }
@@ -215,7 +232,8 @@
                 float2 atmospherePhaseStrength=getAtmospherePhaseStrength(cosTh);
                 float cloudMiePhaseStrength=miePhaseFunction(cosTh,cloudMieCoeff);
                 
-                float3 totalDepth=0;
+                float3 atmosphereDepth=0;
+                float3 cloudDepth=0;
                 float3 scatteredLight=0;
 
 
@@ -232,6 +250,8 @@
                     for(int i=0;i<nStep;++i){
                         dst+=.5*step;
                         float3 scatterPos=rayOrigin+rayDir*dst;
+
+                        //return lerp(color,1,getWeather(scatterPos).a);
                         
                         float r=length(scatterPos),h=r-planetRadius,cosChi=dot(scatterPos,dirToSun)/r;
 
@@ -239,26 +259,27 @@
                         
                         float2 cloudInfo=getCloudDensityHQ(scatterPos,log2(step));
                         float cloudDensity=cloudInfo.x;
-                        float sdf=cloudInfo.y;
                         
-                        output1.absorption+=cloudDensity*cloudAbsorption;
                         output1.scattering+=cloudDensity*cloudInscattering*cloudMiePhaseStrength;
+                        //output1.absorption+=cloudDensity*cloudAbsorption;
                         //for cloud shadow inside atmosphere, do not skip cloudDensity=0 case
                         output1.inscatteringLightDepth+=getCloudDepth(scatterPos,dirToSun)*cloudAbsorption;
 
                         //saturate(density)*step*cloudInscattering*transmittance*(miePhase*lightmarch(pos,numStepsLight-1)*lightColor+getAmbient(pos));
-                        totalDepth+=.5*step*output1.absorption;
-                        scatteredLight+=step*sunColor*output1.scattering*exp(-(totalDepth+output1.inscatteringLightDepth));
-                        totalDepth+=.5*step*output1.absorption;
+                        atmosphereDepth+=.5*step*output1.absorption;
+                        cloudDepth+=.5*step*cloudDensity*cloudAbsorption;
+
+
+                        scatteredLight+=step*sunColor*output1.scattering*exp(-(atmosphereDepth+cloudDepth+output1.inscatteringLightDepth));
+                        atmosphereDepth+=.5*step*output1.absorption;
+                        cloudDepth+=.5*step*cloudDensity*cloudAbsorption;
                         dst+=.5*step;
 
                         //step=(dstThroughCloud-(dst-cloudHit.x))/(nStep-i-1);
 
                     }
-                    
-                //totalDepth=cloudAbsorption*(cloudHit.y-cloudHit.x+cloudHit.w-cloudHit.z);
 
-                color=color*exp(-totalDepth)+scatteredLight;
+                color=color*exp(-(atmosphereDepth+cloudDepth))+scatteredLight;
 
                 if(cloudHit.x>0)
                     color=raymarch_atm(color,rayOrigin,rayDir,cloudHit.x);

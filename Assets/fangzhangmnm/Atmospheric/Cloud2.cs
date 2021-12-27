@@ -37,10 +37,16 @@ namespace fzmnm
         public AtmosphereScatteringSetting atmosphereScatteringSetting=new AtmosphereScatteringSetting();
         public float SkyLightMultiplier = 4f;
 
-        [Header("Weather Map")]
+        [Header("Weather")]
+        public WeatherMapType weatherMapType = WeatherMapType.Planar;
+        public enum WeatherMapType { Uniform, Planar, Spherical };
         public Texture2D weatherMap;
         public float weatherMapScale = 100000f;
         public Vector2 weatherMapOffset;
+        [Range(0, 1f)] public float cloudType = 0;
+        public float cloudLowerHeight = 500f;
+        public float cloudDeltaHeight = 1500f;
+        [Range(0, 1f)] public float cloudCoverage = .5f;
 
         [Header("Cloud Shape")]
         public Texture3D cloudNoiseTexture;
@@ -49,13 +55,7 @@ namespace fzmnm
         public float cloudErosionScaleDivisor = 5.7f;
         public Vector3 cloudNoisePositionOffset, cloudErosionPositionOffset;
         public Vector3 cloudNoisePositionOffsetVelocity, cloudErosionOffsetVelocity;
-        [Range(0, 1f)] public float cloudErosionStrength = .2f;
-
-        [Header("")]
-        public float cloudLowerHeight = 500f;
-        public float cloudUpperHeight = 2000f;
-        [Range(0, 1f)] public float cloudCoverage = .5f;
-        [Range(0, 1f)] public float cloudType = 0;
+        [Range(0, 1f)] public float cloudErosionStrength = .3f;
 
         [Header("Cloud Scattering")]
         public float cloudDensity = 0.01f;
@@ -101,7 +101,8 @@ namespace fzmnm
             if (updateSceneLights)
                 UpdateSceneLights();
             Debug.Assert(cloudNoiseTexture.filterMode == FilterMode.Trilinear);
-            Debug.Assert(weatherMap.wrapMode == TextureWrapMode.Clamp);
+            if(weatherMapType==WeatherMapType.Planar)
+                Debug.Assert(weatherMap.wrapMode == TextureWrapMode.Clamp);
             Debug.Assert(QualitySettings.activeColorSpace == ColorSpace.Linear);
         }
         private void Reset()
@@ -122,7 +123,7 @@ namespace fzmnm
             mat.SetFloat("cloudMaxHeight", (cloudSphereMaxHeight) / scale);
 
             //Sun
-            mat.SetVector("dirToSun", -light.transform.forward);
+            mat.SetVector("dirToSun", Quaternion.Inverse(planetRotation )*- light.transform.forward);
             mat.SetVector("sunColor", RGB2SpectralColor(lightColor * Mathf.PI * SkyLightMultiplier)); //should be pi instead of 4 pi. Why?
             float g2 = sunDiscG * sunDiscG;
             mat.SetVector("sunDiscCoeff", new Vector4(3f / (8f * Mathf.PI) * (1 - g2) / (2 + g2), 1 + g2, 2 * sunDiscG, sunDiscConvergence));
@@ -134,6 +135,10 @@ namespace fzmnm
             mat.SetTexture("WeatherMap", weatherMap);
             mat.SetFloat("weatherMapScale", weatherMapScale / scale);
             mat.SetVector("weatherMapOffset", (weatherMapOffset + Vector2.one * weatherMapScale/2) / scale);
+            mat.SetFloat("cloudType", cloudType);
+            mat.SetFloat("cloudLowerHeight", cloudLowerHeight / scale);
+            mat.SetFloat("cloudDeltaHeight", cloudDeltaHeight / scale);
+            mat.SetFloat("cloudCoverage", cloudCoverage);
 
             //Cloud Shape
             mat.SetTexture("CloudNoiseTexture", cloudNoiseTexture);
@@ -148,11 +153,6 @@ namespace fzmnm
             mat.SetVector("cloudNoisePositionOffset", (cloudNoisePositionOffset + elapsed * cloudNoisePositionOffsetVelocity) / scale);
             mat.SetVector("cloudErosionPositionOffset", (cloudErosionPositionOffset + elapsed * cloudErosionOffsetVelocity) / scale);
             
-            //
-            mat.SetFloat("cloudCoverage", cloudCoverage);
-            mat.SetFloat("cloudLowerHeight", cloudLowerHeight / scale);
-            mat.SetFloat("cloudUpperHeight", cloudUpperHeight / scale);
-            mat.SetFloat("cloudType", cloudType);
 
             //Cloud Scattering
             mat.SetColor("cloudAbsorption", cloudAbsorption * cloudDensity * scale);
@@ -172,16 +172,42 @@ namespace fzmnm
 
         private void UpdateParameters()
         {
+
             if (!mat || mat.shader != shader && shader) { mat = new Material(shader); }
+
+            switch (weatherMapType)
+            {
+                case WeatherMapType.Uniform:
+                    mat.EnableKeyword("WEATHERMAP_UNIFORM");
+                    mat.DisableKeyword("WEATHERMAP_PLANAR");
+                    mat.DisableKeyword("WEATHERMAP_SPHERICAL");
+                    break;
+                case WeatherMapType.Planar:
+                    mat.DisableKeyword("WEATHERMAP_UNIFORM");
+                    mat.EnableKeyword("WEATHERMAP_PLANAR");
+                    mat.DisableKeyword("WEATHERMAP_SPHERICAL");
+                    break;
+                case WeatherMapType.Spherical:
+                    mat.DisableKeyword("WEATHERMAP_UNIFORM");
+                    mat.DisableKeyword("WEATHERMAP_PLANAR");
+                    mat.EnableKeyword("WEATHERMAP_SPHERICAL");
+                    break;
+            }
             camera = GetComponent<Camera>();
             camera.depthTextureMode = DepthTextureMode.Depth;
 
             if (overridePlanetCenter)
             {
                 if (planetRef == null)
+                {
                     planetCenter = new Vector3(0, -planetRadius, 0);
+                    planetRotation = Quaternion.identity;
+                }
                 else
+                {
                     planetCenter = planetRef.position;
+                    planetRotation = planetRef.rotation;
+                }
             }
             if (overrideLightColorFromTemperature) lightColor = Temperature2RGB(lightTemperature) * lightIntensity;
 
