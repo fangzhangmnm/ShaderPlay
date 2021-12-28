@@ -20,21 +20,22 @@ namespace fzmnm
         public float scaleForNumericalStability;
         public float sceneScaleMultiplier = 1f;
 
-        [Header("Sun")]
+        [Header("Lighting")]
         public new Light light;
         [Range(500, 15000)] public float lightTemperature = 5778f;//in space
         public float lightIntensity = 1.2f;
         public bool overrideLightColorFromTemperature = true;
-        [ColorUsage(true, true)] public Color lightColor;
+        [ColorUsage(false, true)] public Color lightColor;
+        [ColorUsage(false, true)] public Color planetColor = Color.white * .3f;
         public float sunDiscG = .99f;
-        [Range(1, 10)] public float sunDiscConvergence = 5f;
+        [Range(1, 500)] public float sunDiscConvergence = 100f;
 
         [Header("Atmosphere")]
         public AtmosphereScatteringSetting atmosphereScatteringSetting=new AtmosphereScatteringSetting();
         public float SkyLightMultiplier = 4f;
 
         [Header("LightMarch")]
-        public float fixedStepLength = 1000f;
+        public float fixedStepLength = 10000f;
         public int fixedStepNum = 5;
         public int totalStepNum = 10;
 
@@ -74,6 +75,11 @@ namespace fzmnm
             OnValidate();
         }
 
+        Vector3 getMieCoeff(float g, float boost = 1)
+        {
+            float g2 = g * g;
+            return new Vector3(boost * 3f / (8f * Mathf.PI) * (1 - g2) / (2 + g2), 1 + g2, 2 * g);
+        }
         void UpdateMaterial()
         {
 
@@ -88,8 +94,9 @@ namespace fzmnm
             //Sun Light
             mat.SetVector("dirToSun", Quaternion.Inverse(planetRotation) * -light.transform.forward);
             mat.SetVector("sunColor", RGB2SpectralColor(lightColor * Mathf.PI * SkyLightMultiplier)); //should be pi instead of 4 pi. Why?
-            float g2 = sunDiscG * sunDiscG;
-            mat.SetVector("sunDiscCoeff", new Vector4(3f / (8f * Mathf.PI) * (1 - g2) / (2 + g2), 1 + g2, 2 * sunDiscG, sunDiscConvergence));
+            mat.SetVector("planetColor", RGB2SpectralColor(planetColor)); //should be pi instead of 4 pi. Why?
+            Vector4 v = getMieCoeff(sunDiscG);v.w = sunDiscConvergence;
+            mat.SetVector("sunDiscCoeff", v);
 
             //Atmosphere
             atmosphereScatteringSetting.SetMaterial(mat,planetRadius:planetRadius,scale:scale);

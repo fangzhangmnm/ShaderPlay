@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.0010078202, g: 0.0017043077, b: 0.0034486365, a: 1}
+  m_IndirectSpecularColor: {r: 0.0010077883, g: 0.0017041808, b: 0.0034484447, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -326,6 +326,7 @@ MonoBehaviour:
   lightIntensity: 1.2
   overrideLightColorFromTemperature: 1
   lightColor: {r: 1.2, g: 1.1958123, b: 1.1766679, a: 1.2}
+  planetColor: {r: 0.3, g: 0.3, b: 0.3, a: 0.3}
   sunDiscG: 0.99
   sunDiscConvergence: 5
   atmosphereScatteringSetting:
@@ -394,7 +395,7 @@ MonoBehaviour:
   planetRotation: {x: -0, y: -0.65044564, z: -0, w: 0.75955284}
   planetRadius: 637100
   atmosphereMaxHeight: 60000
-  cloudSphereMaxHeight: 7000
+  cloudSphereMaxHeight: 5000
   autoScaleForNumericalStability: 1
   scaleForNumericalStability: 282934.62
   sceneScaleMultiplier: 6371
@@ -403,6 +404,7 @@ MonoBehaviour:
   lightIntensity: 1.2
   overrideLightColorFromTemperature: 1
   lightColor: {r: 1.2, g: 1.1406962, b: 1.0849359, a: 1.2}
+  planetColor: {r: 0.3, g: 0.3, b: 0.3, a: 0.3}
   sunDiscG: 0.99
   sunDiscConvergence: 5
   atmosphereScatteringSetting:
@@ -414,7 +416,7 @@ MonoBehaviour:
     rayleighScaleHeight: 8000
     mieMultiplier: 1
     mieScattering: {r: 0.3996, g: 0.3996, b: 0.3996, a: 1}
-    mieAbsorption: {r: 0.44, g: 0.44, b: 0.44, a: 1}
+    mieAbsorption: {r: 0.22, g: 0.22, b: 0.22, a: 0.5}
     mieG: 0.8
     mieScaleHeight: 1200
     ozoneAbsorption: {r: 0.0064999997, g: 0.01881, b: 0.00085000007, a: 0.1}
@@ -446,35 +448,48 @@ MonoBehaviour:
   weatherMap: {fileID: 2800000, guid: 619318c49bf1895448a6c217ecfe04ae, type: 3}
   weatherMapScale: 100000
   weatherMapOffset: {x: 0, y: 0}
-  cloudType: 1
+  cloudType: 0
   cloudLowerHeight: 500
   cloudDeltaHeight: 1500
   cloudCoverage: 0.5
-  cloudNoiseTexture: {fileID: 11700000, guid: eecc98e0390d42d43b38ef369b89850b, type: 2}
+  cloudNoiseTexture: {fileID: 11700000, guid: 97ce3664c3766c1498261da6fe0c11b3, type: 2}
   cloudErosionTexture: {fileID: 11700000, guid: eecc98e0390d42d43b38ef369b89850b,
     type: 2}
-  cloudNoiseScale: 40000
-  cloudErosionScaleDivisor: 4.5
+  cloudNoiseScale: 10000
+  cloudErosionScaleDivisor: 23.3
   cloudNoisePositionOffset: {x: 0, y: 0, z: 0}
   cloudErosionPositionOffset: {x: 0, y: 0, z: 0}
   cloudNoisePositionOffsetVelocity: {x: 0, y: 0, z: 0}
   cloudErosionOffsetVelocity: {x: 0, y: 0, z: 0}
-  cloudErosionStrength: 0.482
+  cloudErosionStrength: 0.5
   cloudDensity: 0.01
   cloudInscattering: {r: 1, g: 1, b: 1, a: 1}
-  cloudAbsorption: {r: 0.3018868, g: 0.3018868, b: 0.3018868, a: 0.5}
-  cloudMiePhase: 0.26
-  atmosphereStepNum: 4
-  cloudStepNum: 32
-  cloudStepQ: 1.5
-  cloudStepQuitDepth: 3
-  cloudNoiseSDFMultiplier: 0.5
-  cloudLightingStepNum: 1
-  cloudLightingLQStepNum: 2
+  cloudAbsorption: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
+  cloudEmission: {r: 0, g: 0, b: 0, a: 1}
+  cloudBackwardMiePhase: -0.15
+  cloudForwardMiePhase: 0.85
+  cloudBackwardScatteringBoost: 2.16
+  cloudMultiScattering: 5
+  cloudPowderCoeff: 2
+  atmosphereStepNum: 8
+  cloudStepNum: 128
+  cloudStepMaxDist: 50000
+  cloudStepQN: 128
+  cloudLightingStepNum: 6
   cloudLightingStepQ: 1.5
+  cloudLightingStepMaxDist: 15000
+  cloudLightingLQStepNum: 2
+  cloudLightingLQStepQ: 1.5
+  cloudLightingLQStepMaxDist: 5000
   cloudNoiseLodBias: 0
   cloudErosionLodBias: 0
+  weatherMapLodBias: 0
+  cloudStepQuitDepth: 3
+  cloudNoiseSDFMultiplier: 0.125
+  cloudHeightSDFMultiplier: 0.5
   CLOUD_DEBUG_SHOW_STEPS: 0
+  renderToTexture: 0
+  renderTextureSize: 512
   updateSceneLights: 0
   sceneLightMultiplier: 1
   sceneLightDirectionalLightColorMultiplier: 1
@@ -600,14 +615,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1660144425}
-  m_LocalRotation: {x: -0.7263973, y: 0.10904947, z: 0.51149374, w: -0.44590297}
+  m_LocalRotation: {x: -0.6840926, y: 0.17660706, z: 0.51927817, w: -0.48080924}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 1
-  m_LocalEulerAnglesHint: {x: 32.429, y: -455.377, z: -133.271}
+  m_LocalEulerAnglesHint: {x: 28.322, y: -449.892, z: -122.676}
 --- !u!1 &1665094635
 GameObject:
   m_ObjectHideFlags: 0

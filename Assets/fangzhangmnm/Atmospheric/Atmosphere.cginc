@@ -36,8 +36,9 @@
     float sunDisc(float cosTh,float4 sunDiscCoeff){
         //Th: angle between ray and dirToLight
         cosTh = pow(saturate(cosTh), sunDiscCoeff.w);
-        return miePhaseFunction(cosTh,sunDiscCoeff.xyz);
+        return 16*(1-exp(-miePhaseFunction(cosTh,sunDiscCoeff.xyz)));
     }
+
     float chapman(float x,float cosChi){
         //x: height of rayOrigin normalized by scaleHeight
         //Chi: angle between ray and local zenith
@@ -96,7 +97,7 @@
     }
     
     struct Atmosphere_Output{
-        float3 scattering;
+        float3 rayleighScattering,mieScattering;
         float3 absorption;
         float3 inscatteringLightDepth;
     };
@@ -106,15 +107,15 @@
                       miePhaseFunction(cosTh,atmosphere_miePhaseCoeff));
     }
 
-    Atmosphere_Output atmosphereStep(float r,float h, float cosChi,float2 phaseStrength){
+    Atmosphere_Output atmosphereStep(float r,float h, float cosChi){
         //r: dist to planet center
         //h: dist to planet surface
         //cosChi: angle between dirToLight and local zenith
 
         Atmosphere_Output output;
 
-        float rayleighExp=min(10,exp(-h/atmosphere_rayleighScaleHeight));
-        float mieExp=min(10,exp(-h/atmosphere_mieScaleHeight));
+        float rayleighExp=min(1,exp(-h/atmosphere_rayleighScaleHeight));
+        float mieExp=min(1,exp(-h/atmosphere_mieScaleHeight));
 
         float4 ozoneHit=raySphereShell(atmosphere_ozoneMeanRadius-atmosphere_ozoneHalfDeltaRadius,atmosphere_ozoneMeanRadius+atmosphere_ozoneHalfDeltaRadius,r*r,r*cosChi);
         float ozoneExistence=max(0,1-(r-atmosphere_ozoneMeanRadius)/atmosphere_ozoneHalfDeltaRadius);
@@ -128,9 +129,11 @@
             +atmosphere_mieAbsorption            *mieExp*atmosphere_mieScaleHeight*chapman(r/atmosphere_mieScaleHeight,cosChi)
             +atmosphere_ozoneAbsorption          *((ozoneHit.y-ozoneHit.x+ozoneHit.w-ozoneHit.z)/2);
                     
-        output.scattering=
-                rayleighExp*atmosphere_rayleighScattering*phaseStrength.x
-                +mieExp*atmosphere_mieScattering*phaseStrength.y;
+        output.rayleighScattering=rayleighExp*atmosphere_rayleighScattering;
+        output.mieScattering=mieExp*atmosphere_mieScattering;
+        //output.scattering=
+        //        rayleighExp*atmosphere_rayleighScattering*phaseStrength.x
+        //        +mieExp*atmosphere_mieScattering*phaseStrength.y;
 
         return output;
     }

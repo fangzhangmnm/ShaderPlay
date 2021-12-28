@@ -51,9 +51,10 @@
             uniform float depthToPlanetS;
             uniform float planetRadius;
             uniform float atmosphereRadius;
-            //Sun
+            //Lighting
             uniform float3 dirToSun;
             uniform float3 sunColor;
+            uniform float3 planetColor;
             uniform float4 sunDiscCoeff;
 
             //LightMarch
@@ -75,7 +76,7 @@
                 float dstThroughAtmosphere=atmosphereHit.y-atmosphereHit.x;
                 if(dstThroughAtmosphere<=0)return color;
 
-                float2 atmospherePhaseStrength=getAtmospherePhaseStrength(dot(rayDir,dirToSun));
+                float2 atmosphereSunPhaseStrength=getAtmospherePhaseStrength(dot(rayDir,dirToSun));
                 float3 totalDepth=0;
                 float3 scatteredLight=0;
 
@@ -93,10 +94,17 @@
 
                     float r=length(scatterPos),h=r-planetRadius,cosChi=dot(scatterPos,dirToSun)/r;
 
-                    Atmosphere_Output output1=atmosphereStep(r,h,cosChi,atmospherePhaseStrength);
+                    Atmosphere_Output output1=atmosphereStep(r,h,cosChi);
                     
                     totalDepth+=.5*step*output1.absorption;
-                    scatteredLight+=step*sunColor*output1.scattering*exp(-(totalDepth+output1.inscatteringLightDepth));
+
+                    float3 sunVertex=output1.rayleighScattering*atmosphereSunPhaseStrength.x+output1.mieScattering*atmosphereSunPhaseStrength.y;
+                    float3 groundVertex=(output1.rayleighScattering+output1.mieScattering)*0.07957747154;
+
+                    scatteredLight+=step*sunColor*sunVertex*exp(-(totalDepth+output1.inscatteringLightDepth));
+                    scatteredLight+=step*sunColor*saturate(cosChi)*planetColor*groundVertex*exp(-totalDepth);
+                    
+
                     totalDepth+=.5*step*output1.absorption;
 
                     dst+=.5*step;
@@ -108,6 +116,7 @@
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
 
+
                 //Get the screen depth and camera ray
                 fixed nonlinearDepth= SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, input.uv);
                 bool hasDepth; if(UNITY_REVERSED_Z) hasDepth=nonlinearDepth>0;else hasDepth=nonlinearDepth<1;
@@ -117,6 +126,7 @@
 
                 //Get the screen color, convert to Spectral color space
                 float3 color=UNITY_SAMPLE_SCREENSPACE_TEXTURE(_MainTex,input.uv);
+
                 color=mul(RGB2spectralColor,color); //The spectral color space is not the rgb color space
 
                 //Draw the sun disc
@@ -126,6 +136,7 @@
 
                 //Raymarch
                 color=raymarch(color, rayOrigin,rayDir,depth);
+
                 
                 //Tonemapping HDR to LDR
                 if(toneMappingExposure>0)

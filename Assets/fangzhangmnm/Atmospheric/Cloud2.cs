@@ -24,14 +24,15 @@ namespace fzmnm
         public float scaleForNumericalStability;
         public float sceneScaleMultiplier = 1f;
 
-        [Header("Sun")]
+        [Header("Lighting")]
         public new Light light;
         [Range(500, 15000)] public float lightTemperature = 5778f;//in space
         public float lightIntensity = 1.2f;
         public bool overrideLightColorFromTemperature = true;
-        [ColorUsage(true, true)] public Color lightColor;
+        [ColorUsage(false, true)] public Color lightColor;
+        [ColorUsage(false, true)] public Color planetColor = Color.white * .3f;
         public float sunDiscG = .99f;
-        [Range(1, 10)] public float sunDiscConvergence = 5f;
+        [Range(1, 500)] public float sunDiscConvergence = 100f;
 
         [Header("Atmosphere")]
         public AtmosphereScatteringSetting atmosphereScatteringSetting=new AtmosphereScatteringSetting();
@@ -60,22 +61,43 @@ namespace fzmnm
         [Header("Cloud Scattering")]
         public float cloudDensity = 0.01f;
         [ColorUsage(false, true)] public Color cloudInscattering = Color.white;
-        [ColorUsage(false, true)] public Color cloudAbsorption = Color.white*.75f;
-        [Range(-1f, 1f)] public float cloudMiePhase = .26f;
+        [ColorUsage(false, true)] public Color cloudAbsorption = Color.white*.5f;
+        [ColorUsage(false, true)] public Color cloudEmission = Color.black;
+        [Range(-1f, 0)] public float cloudBackwardMiePhase = -.15f;
+        [Range(0, 1f)] public float cloudForwardMiePhase = .85f;
+        public float cloudBackwardScatteringBoost = 2.16f;
+        public float cloudMultiScattering = 5f;
+
+        public float cloudPowderCoeff = 2f;
 
         [Header("LightMarch")]
         public int atmosphereStepNum = 8;
+
         public int cloudStepNum = 128;
         public float cloudStepMaxDist = 50000f;
-        public float cloudStepQN = 15f;
+        public float cloudStepQN = 128f;
+
+        public int cloudLightingStepNum = 6;
+        public float cloudLightingStepQ = 1.5f;
+        public float cloudLightingStepMaxDist = 15000f;
+
+        public int cloudLightingLQStepNum = 2;
+        public float cloudLightingLQStepQ = 1.5f;
+        public float cloudLightingLQStepMaxDist = 5000f;
+
+        public float cloudNoiseLodBias = 0;
+        public float cloudErosionLodBias = 0;
+        public float weatherMapLodBias = 0;
+
         public float cloudStepQuitDepth = 3;
         public float cloudNoiseSDFMultiplier = .125f;
-        public int cloudLightingStepNum = 6;
-        public int cloudLightingLQStepNum=2;
-        public float cloudLightingStepQ = 1.5f;
-        public float cloudNoiseLodBias = -1;
-        public float cloudErosionLodBias = -1;
+        public float cloudHeightSDFMultiplier = .7f;
+
         public bool CLOUD_DEBUG_SHOW_STEPS = false;
+
+        [Header("Downsampling")]
+        public bool renderToTexture = false;
+        public int renderTextureSize = 512;
 
 
         [Header("Update Scene Lights")]
@@ -115,7 +137,11 @@ namespace fzmnm
         {
             OnValidate();
         }
-
+        Vector3 getMieCoeff(float g, float boost = 1)
+        {
+            float g2 = g * g;
+            return new Vector3(boost*3f / (8f * Mathf.PI) * (1 - g2) / (2 + g2), 1 + g2, 2 * g);
+        }
         void UpdateMaterial()
         {
 
@@ -131,8 +157,9 @@ namespace fzmnm
             //Sun
             mat.SetVector("dirToSun", Quaternion.Inverse(planetRotation )*- light.transform.forward);
             mat.SetVector("sunColor", RGB2SpectralColor(lightColor * Mathf.PI * SkyLightMultiplier)); //should be pi instead of 4 pi. Why?
-            float g2 = sunDiscG * sunDiscG;
-            mat.SetVector("sunDiscCoeff", new Vector4(3f / (8f * Mathf.PI) * (1 - g2) / (2 + g2), 1 + g2, 2 * sunDiscG, sunDiscConvergence));
+            mat.SetVector("planetColor", RGB2SpectralColor(planetColor)); //should be pi instead of 4 pi. Why?
+            Vector4 tmp = getMieCoeff(sunDiscG);tmp.w = sunDiscConvergence;
+            mat.SetVector("sunDiscCoeff", tmp);
 
             //Atmosphere
             atmosphereScatteringSetting.SetMaterial(mat, planetRadius: planetRadius, scale: scale);
@@ -158,27 +185,40 @@ namespace fzmnm
 #endif
             mat.SetVector("cloudNoisePositionOffset", (cloudNoisePositionOffset + elapsed * cloudNoisePositionOffsetVelocity) / scale);
             mat.SetVector("cloudErosionPositionOffset", (cloudErosionPositionOffset + elapsed * cloudErosionOffsetVelocity) / scale);
-            
+            mat.SetFloat("cloudErosionStrength", cloudErosionStrength);
 
             //Cloud Scattering
-            mat.SetColor("cloudAbsorption", cloudAbsorption * cloudDensity * scale);
-            mat.SetColor("cloudInscattering", cloudInscattering * cloudDensity * scale);
-            g2 = cloudMiePhase * cloudMiePhase;
-            mat.SetVector("cloudMieCoeff", new Vector3(3f / (8f * Mathf.PI) * (1 - g2) / (2 + g2), 1 + g2, 2 * cloudMiePhase));
+            mat.SetVector("cloudAbsorption", RGB2SpectralColor( cloudAbsorption) * cloudDensity * scale);
+            mat.SetVector("cloudInscattering", RGB2SpectralColor(cloudInscattering) * cloudDensity * scale);
+            mat.SetVector("cloudEmission", RGB2SpectralColor(cloudEmission) * cloudDensity * scale);
+            mat.SetVector("cloudBackwardMieCoeff", getMieCoeff(cloudBackwardMiePhase,cloudBackwardScatteringBoost));
+            mat.SetVector("cloudForwardMieCoeff", getMieCoeff(cloudForwardMiePhase));
+            mat.SetFloat("cloudPowderCoeff", cloudPowderCoeff);
+            mat.SetFloat("cloudMultiScattering", cloudMultiScattering);
 
             //LightMarch Parameters
             mat.SetInt("atmosphereStepNum", atmosphereStepNum);
+
             mat.SetInt("cloudStepNum", cloudStepNum);
             mat.SetFloat("cloudStepMaxDist", cloudStepMaxDist /scale);
             mat.SetFloat("cloudStepQ", Mathf.Pow(cloudStepQN,1.0f/cloudStepNum));
-            mat.SetFloat("cloudStepQuitDepth", cloudStepQuitDepth);
-            mat.SetFloat("cloudNoiseSDFMultiplier", cloudNoiseSDFMultiplier);
+
             mat.SetInt("cloudLightingStepNum", cloudLightingStepNum);
-            mat.SetInt("cloudLightingLQStepNum", cloudLightingLQStepNum);
+            mat.SetFloat("cloudLightingStepMaxDist", cloudLightingStepMaxDist / scale);
             mat.SetFloat("cloudLightingStepQ", cloudLightingStepQ);
+
+            mat.SetInt("cloudLightingLQStepNum", cloudLightingLQStepNum);
+            mat.SetFloat("cloudLightingLQStepMaxDist", cloudLightingLQStepMaxDist / scale);
+            mat.SetFloat("cloudLightingLQStepQ", cloudLightingLQStepQ);
+
             mat.SetFloat("cloudNoiseLodShift", Mathf.Log(cloudNoiseTexture.width / (cloudNoiseScale / scale), 2) + cloudNoiseLodBias);
             mat.SetFloat("cloudErosionLodShift", Mathf.Log(cloudErosionTexture.width / (cloudNoiseScale / cloudErosionScaleDivisor / scale), 2) + cloudErosionLodBias);
-            mat.SetFloat("cloudErosionStrength", cloudErosionStrength);
+            float weatherMapScale1 = weatherMapType == WeatherMapType.Spherical ? 2 * Mathf.PI * planetRadius : weatherMapScale;
+            mat.SetFloat("weatherMapLodShift", Mathf.Log(weatherMap.width / (weatherMapScale1 / scale), 2) + weatherMapLodBias);
+
+            mat.SetFloat("cloudStepQuitDepth", cloudStepQuitDepth);
+            mat.SetFloat("cloudNoiseSDFMultiplier", cloudNoiseSDFMultiplier);
+            mat.SetFloat("cloudHeightSDFMultiplier", cloudHeightSDFMultiplier);
         }
         Vector2 SetGeometricSeries(float total, float qn, int n)
         {

@@ -13,6 +13,7 @@ namespace fzmnm
         public float density = 1.224f;
         public float scatteringMultiplier = 1e-5f / 1.224f;
 
+        public float rayleighMultiplier = 1f;
         [ColorUsage(false, true)] public Color rayleighScattering = new Color(.5802f, 1.3558f, 3.31f);
         [ColorUsage(false, true)] public Color rayleighAbsorption = new Color(.5802f, 1.3558f, 3.31f);
         public Vector3 rayleighPhaseCoeff = new Vector3(1.12f, .4f, 0f) / (4 * Mathf.PI);
@@ -20,14 +21,14 @@ namespace fzmnm
 
         public float mieMultiplier = 1f;
         [ColorUsage(false, true)] public Color mieScattering = new Color(.3996f, .3996f, .3996f);
-        [ColorUsage(false, true)] public Color mieAbsorption = new Color(.440f, .440f, .440f);
+        [ColorUsage(false, true)] public Color mieAbsorption = new Color(.440f, .440f, .440f)/2;
         [Range(-0.99f, 0.99f)] public float mieG = 0.8f;
         public float mieScaleHeight = 1200f;
 
-        [ColorUsage(false, true)] public Color ozoneAbsorption = new Color(.0650f, .1881f, .0085f)/10f;
+        public float ozoneMultiplier = 1f;
+        [ColorUsage(false, true)] public Color ozoneAbsorption = new Color(.0650f, .1881f, .0085f);
         public float ozoneMinHeight = 10000f;
         public float ozoneMaxHeight = 40000f;
-        public float ozoneMultiplier = 1f;
 
         [Header("Color Correction")]
         public Matrix4x4 spectralColor2RGBMatrix = new Matrix4x4(
@@ -43,8 +44,8 @@ namespace fzmnm
         public void SetMaterial(Material mat, float planetRadius, float scale)
         {
             //Scattering
-            mat.SetVector("atmosphere_rayleighScattering", scale * density * scatteringMultiplier * RGB2SpectralColor(rayleighScattering));
-            mat.SetVector("atmosphere_rayleighAbsorption", scale * density * scatteringMultiplier * RGB2SpectralColor(rayleighAbsorption));
+            mat.SetVector("atmosphere_rayleighScattering", scale * density * scatteringMultiplier * rayleighMultiplier * RGB2SpectralColor(rayleighScattering));
+            mat.SetVector("atmosphere_rayleighAbsorption", scale * density * scatteringMultiplier * rayleighMultiplier * RGB2SpectralColor(rayleighAbsorption));
             mat.SetVector("atmosphere_rayleighPhaseCoeff", rayleighPhaseCoeff);
             mat.SetFloat("atmosphere_rayleighScaleHeight", rayleighScaleHeight / scale);
 
