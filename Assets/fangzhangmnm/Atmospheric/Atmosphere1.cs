@@ -9,36 +9,14 @@ namespace fzmnm
     {
         public Shader shader; private Material mat; new private Camera camera;
 
-        [Header("Planet Geometry")]
-        public Transform planetRef;
-        public bool overridePlanetCenter = true;
-        public Vector3 planetCenter;
-        public Quaternion planetRotation = Quaternion.identity;
-        public float planetRadius = 6371000f;
-        public float atmosphereMaxHeight = 60000f;
-        public bool autoScaleForNumericalStability = true;
-        public float scaleForNumericalStability;
-        public float sceneScaleMultiplier = 1f;
 
-        [Header("Lighting")]
-        public new Light light;
-        [Range(500, 15000)] public float lightTemperature = 5778f;//in space
-        public float lightIntensity = 1.2f;
-        public bool overrideLightColorFromTemperature = true;
-        [ColorUsage(false, true)] public Color lightColor;
-        [ColorUsage(false, true)] public Color planetColor = Color.white * .3f;
-        public float sunDiscG = .99f;
-        [Range(1, 500)] public float sunDiscConvergence = 100f;
-
-        [Header("Atmosphere")]
         public AtmosphereScatteringSetting atmosphereScatteringSetting=new AtmosphereScatteringSetting();
-        public float SkyLightMultiplier = 4f;
 
-        [Header("LightMarch")]
-        public float fixedStepLength = 10000f;
-        public int fixedStepNum = 5;
-        public int totalStepNum = 10;
 
+        [Header("Scene References")]
+        public bool overridePlanetCenter = true;
+        public Transform planetRef;
+        public Light sceneDirectionalLight;
 
         [Header("Update Scene Lights")]
         public bool updateSceneLights = false;
@@ -48,12 +26,14 @@ namespace fzmnm
         public float sceneLightAmbientEquatorColorMultiplier = 1f;
         public float sceneLightAmbientEquatorRaySlope = .1f;
 
+        [Header("LightMarch")]
+        public int atmosphereStepNum = 10;
+
         [Multiline(10)] public string debug_text;
         AtmosphereShaderEmulator emulator;
 
         private void OnRenderImage(RenderTexture source, RenderTexture destination)
         {
-            UpdateParameters();
             UpdateMaterial();
             if (updateSceneLights)
                 UpdateSceneLights();
@@ -63,8 +43,7 @@ namespace fzmnm
         }
         private void OnValidate()
         {
-            if (light == null) light = FindObjectOfType<Light>();
-            UpdateParameters();
+            if (sceneDirectionalLight == null) sceneDirectionalLight = FindObjectOfType<Light>();
             UpdateMaterial();
             if (updateSceneLights)
                 UpdateSceneLights();
@@ -75,41 +54,7 @@ namespace fzmnm
             OnValidate();
         }
 
-        Vector3 getMieCoeff(float g, float boost = 1)
-        {
-            float g2 = g * g;
-            return new Vector3(boost * 3f / (8f * Mathf.PI) * (1 - g2) / (2 + g2), 1 + g2, 2 * g);
-        }
         void UpdateMaterial()
-        {
-
-            float scale = scaleForNumericalStability;
-
-            //Planet Geometry
-            mat.SetMatrix("worldToPlanetTRS", Matrix4x4.Inverse(Matrix4x4.TRS(planetCenter / sceneScaleMultiplier, planetRotation, Vector3.one * scale / sceneScaleMultiplier)));
-            mat.SetFloat("depthToPlanetS", sceneScaleMultiplier / scale);
-            mat.SetFloat("planetRadius", (planetRadius) / scale);
-            mat.SetFloat("atmosphereRadius", (atmosphereMaxHeight + planetRadius) / scale);
-
-            //Sun Light
-            mat.SetVector("dirToSun", Quaternion.Inverse(planetRotation) * -light.transform.forward);
-            mat.SetVector("sunColor", RGB2SpectralColor(lightColor * Mathf.PI * SkyLightMultiplier)); //should be pi instead of 4 pi. Why?
-            mat.SetVector("planetColor", RGB2SpectralColor(planetColor)); //should be pi instead of 4 pi. Why?
-            Vector4 v = getMieCoeff(sunDiscG);v.w = sunDiscConvergence;
-            mat.SetVector("sunDiscCoeff", v);
-
-            //Atmosphere
-            atmosphereScatteringSetting.SetMaterial(mat,planetRadius:planetRadius,scale:scale);
-
-            //LightMarch Parameters
-            mat.SetFloat("fixedStepLength", fixedStepLength / scale);
-            mat.SetInt("fixedStepNum", fixedStepNum);
-            mat.SetInt("totalStepNum", totalStepNum);
-
-
-        }
-
-        private void UpdateParameters()
         {
             if (!mat || mat.shader != shader && shader) { mat = new Material(shader); }
             camera = GetComponent<Camera>();
@@ -119,21 +64,20 @@ namespace fzmnm
             {
                 if (planetRef == null)
                 {
-                    planetCenter = new Vector3(0, -planetRadius, 0);
-                    planetRotation = Quaternion.identity;
+                    atmosphereScatteringSetting.planetCenter = new Vector3(0, -atmosphereScatteringSetting.planetRadius, 0);
+                    atmosphereScatteringSetting.planetRotation = Quaternion.identity;
                 }
                 else
                 {
-                    planetCenter = planetRef.position;
-                    planetRotation = planetRef.rotation;
+                    atmosphereScatteringSetting.planetCenter = planetRef.position;
+                    atmosphereScatteringSetting.planetRotation = planetRef.rotation;
                 }
             }
-            if (overrideLightColorFromTemperature) lightColor = Temperature2RGB(lightTemperature) * lightIntensity;
+            atmosphereScatteringSetting.dirToSun = -sceneDirectionalLight.transform.forward;
 
-            fixedStepNum = Mathf.Min(fixedStepNum, totalStepNum);
+            atmosphereScatteringSetting.SetMaterial(mat);
 
-            if (autoScaleForNumericalStability)
-                scaleForNumericalStability = Mathf.Sqrt(2*planetRadius*atmosphereMaxHeight+atmosphereMaxHeight*atmosphereMaxHeight);
+            mat.SetInt("atmosphereStepNum", atmosphereStepNum);
         }
 
         void UpdateSceneLights()
@@ -146,10 +90,10 @@ namespace fzmnm
             emulator.includeMieInscattering = false;
             //do not multiply lightColor by pi because input is in unit of color
             Color l1c = sceneLightDirectionalLightColorMultiplier * sceneLightMultiplier * SpectralColor2RGB(
-                emulator.frag(RGB2SpectralColor(lightColor), camera.transform.position, -light.transform.forward)
+                emulator.frag(RGB2SpectralColor(atmosphereScatteringSetting.lightColor), camera.transform.position, -sceneDirectionalLight.transform.forward)
                 );
-            light.intensity = l1c.maxColorComponent;
-            if (light.intensity > 0) light.color = l1c / light.intensity;
+            sceneDirectionalLight.intensity = l1c.maxColorComponent;
+            if (sceneDirectionalLight.intensity > 0) sceneDirectionalLight.color = l1c / sceneDirectionalLight.intensity;
 
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Trilight;
 
@@ -160,7 +104,7 @@ namespace fzmnm
 
 
             emulator.includeMieInscattering = true;
-            Vector3 equatorDir = Vector3.Normalize(Vector3.ProjectOnPlane(light.transform.forward, Vector3.up) + sceneLightAmbientEquatorRaySlope * Vector3.up);
+            Vector3 equatorDir = Vector3.Normalize(Vector3.ProjectOnPlane(sceneDirectionalLight.transform.forward, Vector3.up) + sceneLightAmbientEquatorRaySlope * Vector3.up);
             RenderSettings.ambientEquatorColor = sceneLightAmbientEquatorColorMultiplier * sceneLightMultiplier * SpectralColor2RGB(
                 emulator.frag(Vector3.zero, camera.transform.position, equatorDir)
                 );

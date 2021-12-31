@@ -46,72 +46,14 @@
                 output.viewVector = mul(unity_CameraToWorld, float4(viewVector,0));
                 return output;
             }
-            //Planet Geometry
-            uniform float4x4 worldToPlanetTRS;
-            uniform float depthToPlanetS;
-            uniform float planetRadius;
-            uniform float atmosphereRadius;
-            //Lighting
-            uniform float3 dirToSun;
-            uniform float3 sunColor;
-            uniform float3 planetColor;
-            uniform float4 sunDiscCoeff;
 
             //LightMarch
-            uniform float fixedStepLength;
-            uniform int fixedStepNum;
-            uniform int totalStepNum;
+            uniform int atmosphereStepNum;
 
 
             UNITY_DECLARE_SCREENSPACE_TEXTURE(_MainTex);
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
 
-
-            float3 raymarch(float3 color, float3 rayOrigin, float3 rayDir, float rayLength){
-                //Intersect the ray to the atmosphere
-                float rr=dot(rayOrigin,rayOrigin);
-                float rCosChi=dot(rayDir,rayOrigin);
-
-                float2 atmosphereHit=min(rayLength,raySphere(atmosphereRadius ,rr,rCosChi));
-                float dstThroughAtmosphere=atmosphereHit.y-atmosphereHit.x;
-                if(dstThroughAtmosphere<=0)return color;
-
-                float2 atmosphereSunPhaseStrength=getAtmospherePhaseStrength(dot(rayDir,dirToSun));
-                float3 totalDepth=0;
-                float3 scatteredLight=0;
-
-                float step=min(fixedStepLength,dstThroughAtmosphere/totalStepNum);
-                float longStep=(dstThroughAtmosphere-step*fixedStepNum)/(totalStepNum-fixedStepNum);
-
-                float dst=atmosphereHit.x;
-                for(int i=0;i<totalStepNum;++i){
-                    if(i>=fixedStepNum)
-                        step=longStep;
-
-                    dst+=.5*step;
-
-                    float3 scatterPos=rayOrigin+rayDir*dst;
-
-                    float r=length(scatterPos),h=r-planetRadius,cosChi=dot(scatterPos,dirToSun)/r;
-
-                    Atmosphere_Output output1=atmosphereStep(r,h,cosChi);
-                    
-                    totalDepth+=.5*step*output1.absorption;
-
-                    float3 sunVertex=output1.rayleighScattering*atmosphereSunPhaseStrength.x+output1.mieScattering*atmosphereSunPhaseStrength.y;
-                    float3 groundVertex=(output1.rayleighScattering+output1.mieScattering)*0.07957747154;
-
-                    scatteredLight+=step*sunColor*sunVertex*exp(-(totalDepth+output1.inscatteringLightDepth));
-                    scatteredLight+=step*sunColor*saturate(cosChi)*planetColor*groundVertex*exp(-totalDepth);
-                    
-
-                    totalDepth+=.5*step*output1.absorption;
-
-                    dst+=.5*step;
-                }
-                return color*exp(-totalDepth)+scatteredLight;
-            }
-            
             fixed3 frag (v2f input) : SV_Target
             {
                 UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
@@ -135,7 +77,8 @@
                     color+=sunColor*sunDisc(cosTh,sunDiscCoeff);
 
                 //Raymarch
-                color=raymarch(color, rayOrigin,rayDir,depth);
+                Raymarch_Output raymarch_output=atmosphere_raymarch(color, rayOrigin,rayDir,depth,atmosphereStepNum);
+                color=color*raymarch_output.transmittance+raymarch_output.scatteredLight;
 
                 
                 //Tonemapping HDR to LDR

@@ -136,8 +136,7 @@ GameObject:
   - component: {fileID: 9743940}
   - component: {fileID: 9743939}
   - component: {fileID: 9743943}
-  - component: {fileID: 9743945}
-  - component: {fileID: 9743946}
+  - component: {fileID: 9743944}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -229,7 +228,7 @@ MonoBehaviour:
   m_TrackingType: 0
   m_UpdateType: 0
   m_UseRelativeTransform: 0
---- !u!114 &9743945
+--- !u!114 &9743944
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -241,26 +240,25 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: daa48ae1a20648446939d08df71e2558, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  shader: {fileID: 4800000, guid: 065a58feb911f4646adbe8dee12aca0b, type: 3}
-  planetRef: {fileID: 0}
-  overridePlanetCenter: 1
-  planetCenter: {x: 0, y: -6371000, z: 0}
-  planetRotation: {x: 0, y: 0, z: 0, w: 1}
-  planetRadius: 6371000
-  atmosphereMaxHeight: 60000
-  cloudSphereMaxHeight: 5000
-  autoScaleForNumericalStability: 1
-  scaleForNumericalStability: 876424.56
-  sceneScaleMultiplier: 1
-  light: {fileID: 1518882476}
-  lightTemperature: 5778
-  lightIntensity: 1.2
-  overrideLightColorFromTemperature: 1
-  lightColor: {r: 1.2, g: 1.1406962, b: 1.0849359, a: 1.2}
-  planetColor: {r: 0.3, g: 0.3, b: 0.3, a: 0.3}
-  sunDiscG: 0.99
-  sunDiscConvergence: 100
+  cloudShader: {fileID: 4800000, guid: 065a58feb911f4646adbe8dee12aca0b, type: 3}
+  fullScreenShader: {fileID: 4800000, guid: e8cca06c4c2f9c944bd3d26bde975187, type: 3}
   atmosphereScatteringSetting:
+    planetCenter: {x: 0, y: -6371000, z: 0}
+    planetRotation: {x: 0, y: 0, z: 0, w: 1}
+    planetRadius: 6371000
+    atmosphereMaxHeight: 60000
+    autoScaleForNumericalStability: 1
+    scaleForNumericalStability: 876424.56
+    sceneScaleMultiplier: 1
+    lightTemperature: 5778
+    lightIntensity: 1.2
+    overrideLightColorFromTemperature: 1
+    lightColor: {r: 1.2, g: 1.1406962, b: 1.0849359, a: 1.2}
+    dirToSun: {x: 0.3691157, y: 0.7264902, z: 0.57962525}
+    planetColor: {r: 0.3, g: 0.3, b: 0.3, a: 0.3}
+    sunDiscG: 0.99
+    sunDiscConvergence: 100
+    SkyLightMultiplier: 4
     density: 1.224
     scatteringMultiplier: 0.0000081699345
     rayleighMultiplier: 1
@@ -297,11 +295,14 @@ MonoBehaviour:
     useColorSpace: 1
     useToneMapping: 1
     toneMappingLogExposure: 0
-  SkyLightMultiplier: 4
+  overridePlanetCenter: 1
+  planetRef: {fileID: 0}
+  sceneDirectionalLight: {fileID: 1518882476}
   weatherMapType: 1
   weatherMap: {fileID: 2800000, guid: 876136511b6842441bc01c63a8b389e4, type: 3}
   weatherMapScale: 100000
   weatherMapOffset: {x: 0, y: 0}
+  cloudSphereMaxHeight: 5000
   cloudType: 0
   cloudLowerHeight: 500
   cloudDeltaHeight: 1500
@@ -315,7 +316,7 @@ MonoBehaviour:
   cloudErosionPositionOffset: {x: 0, y: 0, z: 0}
   cloudNoisePositionOffsetVelocity: {x: 0, y: 0, z: 0}
   cloudErosionOffsetVelocity: {x: 0, y: 0, z: 0}
-  cloudErosionStrength: 0.5
+  cloudErosionStrength: 0.2
   cloudDensity: 0.01
   cloudInscattering: {r: 1, g: 1, b: 1, a: 1}
   cloudAbsorption: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
@@ -329,99 +330,24 @@ MonoBehaviour:
   cloudStepNum: 128
   cloudStepMaxDist: 50000
   cloudStepQN: 128
+  cloudStepDensityQ: 1
   cloudLightingStepNum: 6
   cloudLightingStepQ: 1.5
-  cloudLightingStepMaxDist: 15000
+  cloudLightingStepMaxDist: 5000
+  cloudLightingLQDepth: 0.5
   cloudLightingLQStepNum: 2
-  cloudLightingLQStepQ: 1.5
-  cloudLightingLQStepMaxDist: 5000
+  cloudLightingLQStepQ: 2
+  cloudLightingLQStepMaxDist: 2000
   cloudNoiseLodBias: 0
   cloudErosionLodBias: 0
   weatherMapLodBias: 0
   cloudStepQuitDepth: 3
   cloudNoiseSDFMultiplier: 0.125
-  cloudHeightSDFMultiplier: 0.7
-  CLOUD_DEBUG_SHOW_STEPS: 0
-  renderToTexture: 0
-  renderTextureSize: 512
-  updateSceneLights: 0
-  sceneLightMultiplier: 1
-  sceneLightDirectionalLightColorMultiplier: 1
-  sceneLightAmbientSkyColorMultiplier: 1
-  sceneLightAmbientEquatorColorMultiplier: 1
-  sceneLightAmbientEquatorRaySlope: 0.1
-  debug_text: 
---- !u!114 &9743946
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 9743938}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d54d9ac1f9c3dee4999fbe53c2b39726, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  shader: {fileID: 4800000, guid: 65c8a6e7b0310104aad63e289363370c, type: 3}
-  planetRef: {fileID: 0}
-  overridePlanetCenter: 1
-  planetCenter: {x: 0, y: -6371000, z: 0}
-  planetRotation: {x: 0, y: 0, z: 0, w: 1}
-  planetRadius: 6371000
-  atmosphereMaxHeight: 60000
-  autoScaleForNumericalStability: 1
-  scaleForNumericalStability: 876424.56
-  sceneScaleMultiplier: 1
-  light: {fileID: 1518882476}
-  lightTemperature: 5778
-  lightIntensity: 1.2
-  overrideLightColorFromTemperature: 1
-  lightColor: {r: 1.2, g: 1.1406962, b: 1.0849359, a: 1.2}
-  planetColor: {r: 0.8113208, g: 0.19517621, b: 0.19517621, a: 0.3}
-  sunDiscG: 0.99
-  sunDiscConvergence: 425
-  atmosphereScatteringSetting:
-    density: 1.224
-    scatteringMultiplier: 0.0000081699345
-    rayleighMultiplier: 0.2
-    rayleighScattering: {r: 2.5049229, g: 2.575604, b: 2.7515216, a: 1}
-    rayleighAbsorption: {r: 2.8474865, g: 2.9872706, b: 3.3351777, a: 1}
-    rayleighPhaseCoeff: {x: 0.089126766, y: 0.03183099, z: 0}
-    rayleighScaleHeight: 8000
-    mieMultiplier: 0.1
-    mieScattering: {r: 0.20981668, g: 0.20982057, b: 0.38679248, a: 1}
-    mieAbsorption: {r: 0.13336597, g: 0.15044503, b: 0.3490566, a: 0.5}
-    mieG: 0.8
-    mieScaleHeight: 8000
-    ozoneMultiplier: 0.1
-    ozoneAbsorption: {r: 0.065, g: 0.1881, b: 0.0085, a: 1}
-    ozoneMinHeight: 10000
-    ozoneMaxHeight: 40000
-    spectralColor2RGBMatrix:
-      e00: 1.6218
-      e01: -0.4493
-      e02: 0.0325
-      e03: 0
-      e10: -0.0374
-      e11: 1.0598
-      e12: -0.0742
-      e13: 0
-      e20: -0.0283
-      e21: -0.1119
-      e22: 1.0491
-      e23: 0
-      e30: 0
-      e31: 0
-      e32: 0
-      e33: 1
-    useColorSpace: 1
-    useToneMapping: 1
-    toneMappingLogExposure: 0
-  SkyLightMultiplier: 4
-  fixedStepLength: 10000
-  fixedStepNum: 5
-  totalStepNum: 10
+  cloudNoiseSDFShift: 0.1
+  cloudHeightSDFMultiplier: 0.2
+  CLOUD_DEBUG_DISPLAY: 0
+  renderToTwoEyes: 0
+  renderTextureScale: 0.25
   updateSceneLights: 0
   sceneLightMultiplier: 1
   sceneLightDirectionalLightColorMultiplier: 1
@@ -1201,12 +1127,12 @@ GameObject:
   m_Component:
   - component: {fileID: 1086542858}
   m_Layer: 0
-  m_Name: GameObject
+  m_Name: SceneObjects
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1086542858
 Transform:
   m_ObjectHideFlags: 0
@@ -1614,14 +1540,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1518882475}
-  m_LocalRotation: {x: 0.22850999, y: -0.30843806, z: 0.6303386, w: 0.6747759}
+  m_LocalRotation: {x: 0.69733214, y: -0.5509451, z: 0.09043918, w: 0.44945312}
   m_LocalPosition: {x: 0, y: 14.8, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 44.205, y: 2149.7, z: 81.907}
+  m_LocalEulerAnglesHint: {x: 46.593, y: 1652.49, z: -449.075}
 --- !u!1 &1615499088
 GameObject:
   m_ObjectHideFlags: 0

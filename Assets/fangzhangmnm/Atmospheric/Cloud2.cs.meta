@@ -4,7 +4,8 @@ MonoImporter:
   externalObjects: {}
   serializedVersion: 2
   defaultReferences:
-  - shader: {fileID: 4800000, guid: 065a58feb911f4646adbe8dee12aca0b, type: 3}
+  - cloudShader: {fileID: 4800000, guid: 065a58feb911f4646adbe8dee12aca0b, type: 3}
+  - fullScreenShader: {fileID: 4800000, guid: e8cca06c4c2f9c944bd3d26bde975187, type: 3}
   - planetRef: {instanceID: 0}
   - light: {instanceID: 0}
   - weatherMap: {fileID: 2800000, guid: 876136511b6842441bc01c63a8b389e4, type: 3}

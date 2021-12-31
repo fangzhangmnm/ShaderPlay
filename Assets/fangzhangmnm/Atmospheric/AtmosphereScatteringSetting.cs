@@ -8,6 +8,25 @@ namespace fzmnm
     [System.Serializable]
     public class AtmosphereScatteringSetting
     {
+        [Header("Planet Geometry")]
+        public Vector3 planetCenter;
+        public Quaternion planetRotation = Quaternion.identity;
+        public float planetRadius = 6371000f;
+        public float atmosphereMaxHeight = 60000f;
+        public bool autoScaleForNumericalStability = true;
+        public float scaleForNumericalStability;
+        public float sceneScaleMultiplier = 1f;
+
+        [Header("Lighting")]
+        [Range(500, 15000)] public float lightTemperature = 5778f;//in space
+        public float lightIntensity = 1.2f;
+        public bool overrideLightColorFromTemperature = true;
+        [ColorUsage(false, true)] public Color lightColor;
+        public Vector3 dirToSun=Vector3.up;
+        [ColorUsage(false, true)] public Color planetColor = Color.white * .3f;
+        public float sunDiscG = .99f;
+        [Range(1, 500)] public float sunDiscConvergence = 100f;
+        public float SkyLightMultiplier = 4f;
 
         [Header("Scattering")]
         public float density = 1.224f;
@@ -41,8 +60,28 @@ namespace fzmnm
         public bool useToneMapping = true;
         [Range(-10, 10)] public float toneMappingLogExposure = 0;
 
-        public void SetMaterial(Material mat, float planetRadius, float scale)
+        public void SetMaterial(Material mat)
         {
+            if (overrideLightColorFromTemperature) lightColor = Temperature2RGB(lightTemperature) * lightIntensity;
+
+            if (autoScaleForNumericalStability)
+                scaleForNumericalStability = Mathf.Sqrt(2 * planetRadius * atmosphereMaxHeight + atmosphereMaxHeight * atmosphereMaxHeight);
+
+            float scale = scaleForNumericalStability;
+
+            //Planet Geometry
+            mat.SetMatrix("worldToPlanetTRS", Matrix4x4.Inverse(Matrix4x4.TRS(planetCenter / sceneScaleMultiplier, planetRotation, Vector3.one * scale / sceneScaleMultiplier)));
+            mat.SetFloat("depthToPlanetS", sceneScaleMultiplier / scale);
+            mat.SetFloat("planetRadius", (planetRadius) / scale);
+            mat.SetFloat("atmosphereRadius", (atmosphereMaxHeight + planetRadius) / scale);
+
+            //Sun Light
+            mat.SetVector("dirToSun", Quaternion.Inverse(planetRotation) * dirToSun);
+            mat.SetVector("sunColor", RGB2SpectralColor(lightColor * Mathf.PI * SkyLightMultiplier)); //should be pi instead of 4 pi. Why?
+            mat.SetVector("planetColor", RGB2SpectralColor(planetColor)); //should be pi instead of 4 pi. Why?
+            Vector4 v = getMieCoeff(sunDiscG); v.w = sunDiscConvergence;
+            mat.SetVector("sunDiscCoeff", v);
+
             //Scattering
             mat.SetVector("atmosphere_rayleighScattering", scale * density * scatteringMultiplier * rayleighMultiplier * RGB2SpectralColor(rayleighScattering));
             mat.SetVector("atmosphere_rayleighAbsorption", scale * density * scatteringMultiplier * rayleighMultiplier * RGB2SpectralColor(rayleighAbsorption));
@@ -63,6 +102,12 @@ namespace fzmnm
             mat.SetMatrix("spectralColor2RGB", useColorSpace ? spectralColor2RGBMatrix : Matrix4x4.identity);
             mat.SetMatrix("RGB2spectralColor", useColorSpace ? RGB2spectralColorMatrix : Matrix4x4.identity);
             mat.SetFloat("toneMappingExposure", useToneMapping ? Mathf.Exp(toneMappingLogExposure) : 0);
+        }
+
+        Vector3 getMieCoeff(float g, float boost = 1)
+        {
+            float g2 = g * g;
+            return new Vector3(boost * 3f / (8f * Mathf.PI) * (1 - g2) / (2 + g2), 1 + g2, 2 * g);
         }
         public Vector3 RGB2SpectralColor(Color color)
         {

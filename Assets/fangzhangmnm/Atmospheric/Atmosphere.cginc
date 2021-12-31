@@ -2,6 +2,18 @@
 #define FZMNM_ATMOSPHERE_INCLUDED
 
 
+    //Planet Geometry
+    uniform float4x4 worldToPlanetTRS;
+    uniform float depthToPlanetS;
+    uniform float planetRadius;
+    uniform float atmosphereRadius;
+
+    //Lighting
+    uniform float3 dirToSun;
+    uniform float3 sunColor;
+    uniform float4 sunDiscCoeff;
+
+    uniform float3 planetColor;
 
     //Scattering
     uniform float3 atmosphere_rayleighScattering;
@@ -36,7 +48,7 @@
     float sunDisc(float cosTh,float4 sunDiscCoeff){
         //Th: angle between ray and dirToLight
         cosTh = pow(saturate(cosTh), sunDiscCoeff.w);
-        return 16*(1-exp(-miePhaseFunction(cosTh,sunDiscCoeff.xyz)));
+        return max(0,16*(1-exp(-miePhaseFunction(cosTh,sunDiscCoeff.xyz)))-.01);//-.01 avoid sunlight bleeding to night
     }
 
     float chapman(float x,float cosChi){
@@ -107,13 +119,14 @@
                       miePhaseFunction(cosTh,atmosphere_miePhaseCoeff));
     }
 
-    Atmosphere_Output atmosphereStep(float r,float h, float cosChi){
+    Atmosphere_Output atmosphereStep(float r, float cosChi){
         //r: dist to planet center
         //h: dist to planet surface
         //cosChi: angle between dirToLight and local zenith
 
         Atmosphere_Output output;
 
+        float h=r-planetRadius;
         float rayleighExp=min(1,exp(-h/atmosphere_rayleighScaleHeight));
         float mieExp=min(1,exp(-h/atmosphere_mieScaleHeight));
 
@@ -122,20 +135,73 @@
         
         //absorption at this point
         output.absorption=rayleighExp*atmosphere_rayleighAbsorption+mieExp*atmosphere_mieAbsorption+ozoneExistence*atmosphere_ozoneAbsorption;
-
+        
         //get the depth of inscattering lights
         output.inscatteringLightDepth=
-             atmosphere_rayleighAbsorption       *rayleighExp*atmosphere_rayleighScaleHeight*chapman(r/atmosphere_rayleighScaleHeight,cosChi)
+                atmosphere_rayleighAbsorption       *rayleighExp*atmosphere_rayleighScaleHeight*chapman(r/atmosphere_rayleighScaleHeight,cosChi)
             +atmosphere_mieAbsorption            *mieExp*atmosphere_mieScaleHeight*chapman(r/atmosphere_mieScaleHeight,cosChi)
             +atmosphere_ozoneAbsorption          *((ozoneHit.y-ozoneHit.x+ozoneHit.w-ozoneHit.z)/2);
+            
+        //intersect with planet
+        //if(raySphere(planetRadius,r*r,r*cosChi).x>0) //will introduce artefact
+        //    output.inscatteringLightDepth=50;
+        
+        //output.groundLightDepth= //no visible effect
+        //     atmosphere_rayleighAbsorption       *(1-rayleighExp)*atmosphere_rayleighScaleHeight
+        //    +atmosphere_mieAbsorption            *(1-mieExp)*atmosphere_mieScaleHeight
+        //    +atmosphere_ozoneAbsorption          *(min(r,atmosphere_ozoneMeanRadius+atmosphere_ozoneHalfDeltaRadius)-min(r,atmosphere_ozoneMeanRadius-atmosphere_ozoneHalfDeltaRadius));
                     
         output.rayleighScattering=rayleighExp*atmosphere_rayleighScattering;
         output.mieScattering=mieExp*atmosphere_mieScattering;
-        //output.scattering=
-        //        rayleighExp*atmosphere_rayleighScattering*phaseStrength.x
-        //        +mieExp*atmosphere_mieScattering*phaseStrength.y;
 
         return output;
+    }
+    struct Raymarch_Output{
+        float3 transmittance;
+        float3 scatteredLight;
+    };
+
+    Raymarch_Output atmosphere_raymarch(float3 color, float3 rayOrigin, float3 rayDir, float rayLength, int nStep){
+        //Intersect the ray to the atmosphere
+        float rr=dot(rayOrigin,rayOrigin);
+        float rCosChi=dot(rayDir,rayOrigin);
+
+        float2 atmosphereHit=min(rayLength,raySphere(atmosphereRadius ,rr,rCosChi));
+        float dstThroughAtmosphere=atmosphereHit.y-atmosphereHit.x;
+        if(dstThroughAtmosphere<=0){Raymarch_Output output;output.scatteredLight=0;output.transmittance=1; return output;}
+
+        float2 atmosphereSunPhaseStrength=getAtmospherePhaseStrength(dot(rayDir,dirToSun));
+        float3 totalDepth=0;
+        float3 scatteredLight=0;
+
+        float step=dstThroughAtmosphere/nStep;
+
+        float dst=atmosphereHit.x;
+        for(int i=0;i<nStep;++i){
+
+            dst+=.5*step;
+
+            float3 scatterPos=rayOrigin+rayDir*dst;
+
+            float r=length(scatterPos),cosChi=dot(scatterPos,dirToSun)/r;
+
+            Atmosphere_Output atm=atmosphereStep(r,cosChi);
+                    
+            float3 sunVertex=atm.rayleighScattering*atmosphereSunPhaseStrength.x+atm.mieScattering*atmosphereSunPhaseStrength.y;
+            float3 groundVertex=(atm.rayleighScattering+atm.mieScattering)*0.07957747154;
+
+            //TODO fix divide by zero
+            float3 reducedStep=(1-exp(-atm.absorption*step))/atm.absorption;//it helps get better precision at bigger step lengths
+
+            scatteredLight+=reducedStep*sunColor*sunVertex*exp(-(totalDepth+atm.inscatteringLightDepth));
+            scatteredLight+=reducedStep*sunColor*saturate(cosChi)*planetColor*groundVertex*exp(-(totalDepth));
+            
+            totalDepth+=step*atm.absorption;
+
+            dst+=.5*step;
+
+        }
+        Raymarch_Output output;output.transmittance=exp(-totalDepth);output.scatteredLight=scatteredLight; return output;
     }
 
 
